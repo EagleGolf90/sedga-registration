@@ -2,3 +2,4 @@ backup/*
 !.gitkeep
 includes/config*.php
 logs/*.log
+node_modules/

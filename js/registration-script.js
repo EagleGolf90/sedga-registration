@@ -9,27 +9,39 @@ let isEditingDetails = false;
 // Form data storage for edit functionality
 let storedFormData = null;
 
-// reCAPTCHA verification functionality
-function verifyRecaptchaAndOpenModal() {
-    const recaptchaResponse = grecaptcha.getResponse();
-    const errorDiv = document.getElementById('recaptchaError');
-    
-    if (!recaptchaResponse || recaptchaResponse.length === 0) {
-        // reCAPTCHA not completed
-        if (errorDiv) {
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
-        return false;
-    }
-    
-    // reCAPTCHA verified, hide error and open modal
-    if (errorDiv) {
-        errorDiv.style.display = 'none';
-    }
-    
+// reCAPTCHA verification functionality (commented out to save)
+// function verifyRecaptchaAndOpenModal() {
+//     const recaptchaResponse = grecaptcha.getResponse();
+//     const errorDiv = document.getElementById('recaptchaError');
+//     
+//     if (!recaptchaResponse || recaptchaResponse.length === 0) {
+//         // reCAPTCHA not completed
+//         if (errorDiv) {
+//             errorDiv.style.display = 'block';
+//             setTimeout(() => {
+//                 errorDiv.style.display = 'none';
+//             }, 5000);
+//         }
+//         return false;
+//     }
+//     
+//     // reCAPTCHA verified, hide error and open modal
+//     if (errorDiv) {
+//         errorDiv.style.display = 'none';
+//     }
+//     
+//     const registrationModal = document.getElementById('registrationModal');
+//     if (registrationModal) {
+//         const modal = new bootstrap.Modal(registrationModal);
+//         modal.show();
+//         return true;
+//     }
+//     
+//     return false;
+// }
+
+// Simplified function without reCAPTCHA verification
+function openRegistrationModal() {
     const registrationModal = document.getElementById('registrationModal');
     if (registrationModal) {
         const modal = new bootstrap.Modal(registrationModal);
@@ -573,6 +585,7 @@ function completeRegistration() {
         setTimeout(() => {
             successModal.hide();
             resetAllModalsAndForm();
+            console.log('All modals and form data have been reset');
         }, 5000);
     }, 500);
 }
@@ -582,12 +595,16 @@ function showConfirmationModal() {
     // Collect all form data
     const formData = collectFormData();
     
+    console.log('collectFormData returned:', formData);
+    
     // Store form data and cart state for potential editing
     storedFormData = {
         formData: formData,
         cartData: [...cart], // Create a copy of the cart array
         cartTotal: cartTotal
     };
+    
+    console.log('storedFormData set to:', storedFormData);
     
     // Generate confirmation details HTML
     const confirmationHTML = generateConfirmationHTML(formData);
@@ -603,6 +620,60 @@ function showConfirmationModal() {
     setTimeout(() => {
         const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
         confirmationModal.show();
+    }, 300);
+}
+
+// Handle Edit Details button click - close confirmation modal and reopen registration modal
+function handleEditDetails() {
+    // Check if storedFormData exists before proceeding
+    if (!storedFormData) {
+        console.error('Edit Details called but no form data is available. Please submit the form first.');
+        return;
+    }
+    
+    isEditingDetails = true;
+    
+    console.log('handleEditDetails called, storedFormData:', storedFormData);
+    
+    // Hide the confirmation modal
+    const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+    if (confirmationModal) {
+        confirmationModal.hide();
+    }
+    
+    // After confirmation modal is hidden, show the registration modal first
+    setTimeout(() => {
+        console.log('Reopening registration modal for editing details, storedFormData:', storedFormData);
+        
+        // Get the registration modal element and show it
+        const registrationModalElement = document.getElementById('registrationModal');
+        let registrationModal = bootstrap.Modal.getInstance(registrationModalElement);
+        
+        // If no instance exists, create one
+        if (!registrationModal) {
+            registrationModal = new bootstrap.Modal(registrationModalElement);
+        }
+        
+        // Show the modal
+        registrationModal.show();
+        
+        // After the modal is shown, restore the data
+        setTimeout(() => {
+            console.log('Restoring data to form, storedFormData:', storedFormData);
+            
+            if (storedFormData) {
+                console.log('Calling populateFormFields with:', storedFormData);
+                // populateFormFields will handle both form data AND cart restoration
+                populateFormFields(storedFormData);
+                
+                console.log('Data restoration complete');
+            } else {
+                console.error('storedFormData became null during restoration process');
+            }
+            
+            // Reset the editing flag
+            isEditingDetails = false;
+        }, 500); // Wait for modal to be fully shown
     }, 300);
 }
 
@@ -662,11 +733,14 @@ function populateFormFields(storedData) {
         return;
     }
     
-    console.log('Populating form fields from stored data');
+    console.log('Populating form fields from stored data', storedData);
     
     const data = storedData.formData || storedData; // Handle both old and new data structure
     
+    console.log('Extracted data:', data);
+    
     // Personal Information
+    console.log('Setting firstName to:', data.firstName);
     document.getElementById('firstName').value = data.firstName || '';
     document.getElementById('lastName').value = data.lastName || '';
     document.getElementById('email').value = data.email || '';
@@ -678,6 +752,8 @@ function populateFormFields(storedData) {
     document.getElementById('zipCode').value = data.zipCode || '';
     document.getElementById('country').value = data.country || '';
     
+    console.log('Personal information set');
+    
     // Golf Information
     document.getElementById('age').value = data.age || '';
     document.getElementById('gender').value = data.gender || '';
@@ -685,6 +761,8 @@ function populateFormFields(storedData) {
     document.getElementById('org_id').value = data.org_id || '';
     document.getElementById('sedgaOfficer').checked = data.sedgaOfficer || false;
     document.getElementById('sedgaHallOfFame').checked = data.sedgaHallOfFame || false;
+    
+    console.log('Golf information set');
     
     // Emergency Contact
     if (document.getElementById('emergencyName')) {
@@ -703,6 +781,8 @@ function populateFormFields(storedData) {
         document.getElementById('emergencyPhone').value = data.emergencyPhone || '';
     }
     
+    console.log('Emergency contact set');
+    
     // Payment Information
     if (document.getElementById('sendPayment')) {
         document.getElementById('sendPayment').value = data.sendPayment || '';
@@ -717,6 +797,8 @@ function populateFormFields(storedData) {
         document.getElementById('receiveUsername').value = data.receiveUsername || '';
     }
     
+    console.log('Payment information set');
+    
     // GHIN Information (if handicap tournament is selected)
     if (data.ghinNumber && document.getElementById('ghinNumber')) {
         document.getElementById('ghinNumber').value = data.ghinNumber || '';
@@ -727,9 +809,14 @@ function populateFormFields(storedData) {
         document.getElementById('terms').checked = data.terms || false;
     }
     
+    console.log('Form fields populated, now restoring cart state');
+    
     // Restore cart state if available in new format
     if (storedData.cartData) {
+        console.log('Cart data found:', storedData.cartData);
         restoreCartState(storedData.cartData, storedData.cartTotal);
+    } else {
+        console.warn('No cartData found in storedData');
     }
     
     // Trigger email validation if email is populated
@@ -977,10 +1064,10 @@ document.getElementById('registrationModal').addEventListener('shown.bs.modal', 
     }, 200);
 });
 
-// Reset form when modal is closed (but only if not completing registration)
+// Reset form when modal is closed (but only if not completing registration or editing)
 document.getElementById('registrationModal').addEventListener('hidden.bs.modal', function() {
-    // Only reset if we're not in the middle of completing registration
-    if (!isCompletingRegistration) {
+    // Only reset if we're not in the middle of completing registration and not editing details
+    if (!isCompletingRegistration && !isEditingDetails) {
         resetAllModalsAndForm();
     }
 });
@@ -1027,6 +1114,17 @@ document.getElementById('confirmRegistration').addEventListener('click', functio
 
 
 // Handle when confirmation modal is dismissed (user wants to edit)
+document.getElementById('confirmationModal').addEventListener('hide.bs.modal', function(e) {
+    console.log('Confirmation modal hide event fired. isEditingDetails:', isEditingDetails, 'isCompletingRegistration:', isCompletingRegistration);
+    
+    // Check if this was dismissed to edit (not because we're completing registration)
+    if (isEditingDetails) {
+        console.log('User is editing details, will restore form data');
+        // The restoration will happen after the modal is fully hidden
+    }
+});
+
+// Handle when confirmation modal is fully hidden
 document.getElementById('confirmationModal').addEventListener('hidden.bs.modal', function() {
     console.log('Confirmation modal hidden event fired. isEditingDetails:', isEditingDetails, 'isCompletingRegistration:', isCompletingRegistration);
     
@@ -1107,21 +1205,20 @@ function initializePaymentSection() {
     // Handle payment type change
     function handlePaymentTypeChange() {
         if (sendPaymentRadio.checked) {
-            sendUsernameSection.style.display = 'block';
-            receiveUsernameSection.style.display = 'none';
+            // sendUsernameSection.style.display = 'block';
+            // receiveUsernameSection.style.display = 'none';
             sendUsernameInput.required = true;
             receiveUsernameInput.required = false;
             receiveUsernameInput.value = '';
         } else if (receivePaymentRadio.checked) {
-            sendUsernameSection.style.display = 'none';
-            receiveUsernameSection.style.display = 'block';
+            // sendUsernameSection.style.display = 'none';
+            // receiveUsernameSection.style.display = 'block';
             sendUsernameInput.required = false;
             receiveUsernameInput.required = true;
             sendUsernameInput.value = '';
         } else {
-            // No payment type selected
-            sendUsernameSection.style.display = 'none';
-            receiveUsernameSection.style.display = 'none';
+            // sendUsernameSection.style.display = 'none';
+            // receiveUsernameSection.style.display = 'none';
             sendUsernameInput.required = false;
             receiveUsernameInput.required = false;
         }
@@ -1565,23 +1662,14 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', clearErrorOnInteraction);
     });
     
-    // Handle Edit Details button click - use delegation on the modal footer
-    const confirmationModal = document.getElementById('confirmationModal');
-    if (confirmationModal) {
-        const modalFooter = confirmationModal.querySelector('.modal-footer');
-        if (modalFooter) {
-            // Find the Edit Details button (it has fa-edit icon)
-            const editDetailsButton = Array.from(modalFooter.querySelectorAll('button')).find(btn => 
-                btn.textContent.includes('Edit') && btn.classList.contains('btn-secondary')
-            );
-            
-            if (editDetailsButton) {
-                editDetailsButton.addEventListener('click', function(e) {
-                    console.log('Edit Details button clicked, setting isEditingDetails to true');
-                    isEditingDetails = true;
-                });
-            }
-        }
+    // Handle Edit Details button click
+    const editDetailsBtn = document.getElementById('editDetailsBtn');
+    if (editDetailsBtn) {
+        editDetailsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleEditDetails();
+        });
     }
     
     // Initialize accordion auto-advance functionality
@@ -1731,6 +1819,57 @@ function resetAllModalsAndForm() {
             firstSection.classList.add('show');
         }
     }, 100);
+}
+
+// Fill form with dummy data for testing
+function fillDummyData() {
+    // Personal Information
+    document.getElementById('firstName').value = 'John';
+    document.getElementById('lastName').value = 'Smith';
+    document.getElementById('email').value = 'john.smith@example.com';
+    document.getElementById('phone').value = '555-123-4567';
+    document.getElementById('phoneType').value = '1'; // Mobile
+    document.getElementById('address').value = '123 Main Street';
+    document.getElementById('city').value = 'New York';
+    document.getElementById('state').value = 'NY';
+    document.getElementById('zipCode').value = '10001';
+    document.getElementById('country').value = 'USA';
     
-    console.log('All modals and form data have been reset');
+    // Golf Information
+    document.getElementById('age').value = '45';
+    document.getElementById('gender').value = 'male';
+    document.getElementById('hole18Average').value = '85';
+    document.getElementById('org_id').value = '3'; // Georgia (GDGA)
+    
+    // SEDGA Membership
+    document.getElementById('sedgaOfficer').checked = false;
+    document.getElementById('sedgaHallOfFame').checked = false;
+    
+    // GHIN Information (if visible)
+    const ghinNumber = document.getElementById('ghinNumber');
+    if (ghinNumber) {
+        ghinNumber.value = '123456789';
+    }
+    
+    // Emergency Contact Information
+    document.getElementById('emergencyName').value = 'Jane Smith';
+    document.getElementById('emergencyRelationship').value = 'spouse';
+    document.getElementById('emergencyEmail').value = 'jane.smith@example.com';
+    document.getElementById('emergencyPhoneType').value = '1'; // Mobile
+    document.getElementById('emergencyPhone').value = '555-987-6543';
+    
+    // Payment Information
+    document.getElementById('sendPayment').value = '2'; // Venmo
+    document.getElementById('sendUsername').value = 'johnsmith123';
+    document.getElementById('receivePayment').value = '2'; // Venmo
+    document.getElementById('receiveUsername').value = 'johnsmith123';
+    
+    // Security Verification
+    document.getElementById('terms').checked = true;
+    
+    // Clear any error messages
+    hideErrorMessage();
+    hideFieldErrorsAccordion();
+    
+    console.log('Dummy data filled successfully');
 }
