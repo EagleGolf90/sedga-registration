@@ -9,6 +9,9 @@ let isEditingDetails = false;
 // Form data storage for edit functionality
 let storedFormData = null;
 
+// Track whether the confirm button should be enabled
+let hasFormInput = false;
+
 // reCAPTCHA verification functionality (commented out to save)
 // function verifyRecaptchaAndOpenModal() {
 //     const recaptchaResponse = grecaptcha.getResponse();
@@ -56,6 +59,32 @@ function openRegistrationModal() {
 function validateEmailFormat(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+}
+
+// Check if form has any input
+function checkFormHasInput() {
+    const inputs = document.querySelectorAll('#registrationForm input, #registrationForm select, #registrationForm textarea');
+    for (let input of inputs) {
+        // Skip checkboxes and radio buttons for this check
+        if (input.type === 'checkbox' || input.type === 'radio') continue;
+        
+        if (input.value.trim() !== '') {
+            hasFormInput = true;
+            updateConfirmButtonState();
+            return true;
+        }
+    }
+    hasFormInput = false;
+    updateConfirmButtonState();
+    return false;
+}
+
+// Update confirm registration button state based on form input
+function updateConfirmButtonState() {
+    const confirmBtn = document.getElementById('confirmRegistrationBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = !hasFormInput;
+    }
 }
 
 // Error message functionality
@@ -514,30 +543,6 @@ function updateCartDisplay() {
     }
 }
 
-// Form submit handler
-document.getElementById('registrationForm').addEventListener('submit', function(e) {
-    e.preventDefault(); // Prevent default form submission
-    
-    // Check for suspicious activity first
-    const suspiciousCheck = detectSuspiciousActivity();
-    if (suspiciousCheck.suspicious) {
-        showErrorMessage(suspiciousCheck.reason);
-        return;
-    }
-    
-    // Use the comprehensive validation function
-    if (!validateRegistrationForm()) {
-        return;
-    }
-    
-    // Update submission tracking
-    submissionAttempts++;
-    lastSubmissionTime = Date.now();
-    
-    // Show confirmation modal instead of completing registration directly
-    showConfirmationModal();
-});
-
 // Complete registration function
 function completeRegistration() {
     
@@ -565,6 +570,12 @@ function completeRegistration() {
     
     document.getElementById('registrationSummary').innerHTML = summary;
     
+    // Show the "Edit Details" button in the success modal
+    const editDetailsBtn = document.getElementById('editDetailsBtn');
+    if (editDetailsBtn) {
+        editDetailsBtn.style.display = 'inline-block';
+    }
+    
     // Hide all existing modals first
     const registrationModal = bootstrap.Modal.getInstance(document.getElementById('registrationModal'));
     const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
@@ -590,37 +601,11 @@ function completeRegistration() {
     }, 500);
 }
 
-// Show confirmation modal with all user data
+// Show confirmation modal with all user data (legacy - now uses wizard step 2)
 function showConfirmationModal() {
-    // Collect all form data
-    const formData = collectFormData();
-    
-    console.log('collectFormData returned:', formData);
-    
-    // Store form data and cart state for potential editing
-    storedFormData = {
-        formData: formData,
-        cartData: [...cart], // Create a copy of the cart array
-        cartTotal: cartTotal
-    };
-    
-    console.log('storedFormData set to:', storedFormData);
-    
-    // Generate confirmation details HTML
-    const confirmationHTML = generateConfirmationHTML(formData);
-    
-    // Populate the confirmation modal
-    document.getElementById('confirmationDetails').innerHTML = confirmationHTML;
-    
-    // Hide registration modal first
-    const registrationModal = bootstrap.Modal.getInstance(document.getElementById('registrationModal'));
-    registrationModal.hide();
-    
-    // Show confirmation modal after a short delay
-    setTimeout(() => {
-        const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
-        confirmationModal.show();
-    }, 300);
+    // This function is kept for backward compatibility
+    // It now just proceeds to the wizard step 2 instead
+    proceedToPreview();
 }
 
 // Handle Edit Details button click - close confirmation modal and reopen registration modal
@@ -1048,110 +1033,10 @@ function generateConfirmationHTML(data) {
     `;
 }
 
-// Modal initialization
-document.getElementById('registrationModal').addEventListener('shown.bs.modal', function() {
-    // Modal is now shown - focus on first input
-    const firstInput = this.querySelector('input');
-    if (firstInput) {
-        firstInput.focus();
-    }
-    
-    // Re-initialize accordion auto-advance when modal opens
-    // This ensures all elements are available
-    setTimeout(() => {
-        console.log('Re-initializing accordion auto-advance after modal opened...');
-        initializeAccordionAutoAdvance();
-    }, 200);
-});
-
-// Reset form when modal is closed (but only if not completing registration or editing)
-document.getElementById('registrationModal').addEventListener('hidden.bs.modal', function() {
-    // Only reset if we're not in the middle of completing registration and not editing details
-    if (!isCompletingRegistration && !isEditingDetails) {
-        resetAllModalsAndForm();
-    }
-});
-
 // Add success modal event handler
 document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
     // Always reset everything when success modal is closed
     resetAllModalsAndForm();
-});
-
-// Confirmation modal event handlers
-document.getElementById('confirmRegistration').addEventListener('click', function() {
-    const button = this;
-    const originalHTML = button.innerHTML;
-    
-    // Show loading state
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
-    
-    // Set completion flag
-    isCompletingRegistration = true;
-    
-    // Hide confirmation modal
-    const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-    if (confirmationModal) {
-        confirmationModal.hide();
-    }
-    
-    // Complete the registration
-    setTimeout(() => {
-        completeRegistration();
-        
-        // Reset button state (in case modal is reused)
-        button.disabled = false;
-        button.innerHTML = originalHTML;
-        
-        // Reset completion flag after a longer delay to ensure all modals are handled
-        setTimeout(() => {
-            isCompletingRegistration = false;
-        }, 2000);
-    }, 800);
-});
-
-
-
-// Handle when confirmation modal is dismissed (user wants to edit)
-document.getElementById('confirmationModal').addEventListener('hide.bs.modal', function(e) {
-    console.log('Confirmation modal hide event fired. isEditingDetails:', isEditingDetails, 'isCompletingRegistration:', isCompletingRegistration);
-    
-    // Check if this was dismissed to edit (not because we're completing registration)
-    if (isEditingDetails) {
-        console.log('User is editing details, will restore form data');
-        // The restoration will happen after the modal is fully hidden
-    }
-});
-
-// Handle when confirmation modal is fully hidden
-document.getElementById('confirmationModal').addEventListener('hidden.bs.modal', function() {
-    console.log('Confirmation modal hidden event fired. isEditingDetails:', isEditingDetails, 'isCompletingRegistration:', isCompletingRegistration);
-    
-    // Check if this was dismissed to edit (not because we're completing registration)
-    if (isEditingDetails) {
-        console.log('User is editing details, restoring form data');
-        // Populate the form with stored data
-        if (storedFormData) {
-            console.log('Stored form data found, populating fields');
-            populateFormFields(storedFormData);
-        } else {
-            console.warn('No stored form data available');
-        }
-        
-        // Show the registration modal again
-        setTimeout(() => {
-            console.log('Showing registration modal for editing');
-            const registrationModal = new bootstrap.Modal(document.getElementById('registrationModal'));
-            registrationModal.show();
-        }, 300);
-        
-        // Reset the editing flag
-        isEditingDetails = false;
-    } else if (!isCompletingRegistration && !document.getElementById('successModal').classList.contains('show')) {
-        console.log('Confirmation modal dismissed without editing - user cancelled');
-        // This handles the case where the modal was closed without either editing or confirming
-    }
 });
 
 // Email verification functionality
@@ -1654,6 +1539,9 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('focus', clearErrorOnInteraction);
         input.addEventListener('input', clearErrorOnInteraction);
         input.addEventListener('change', clearErrorOnInteraction);
+        // Add listeners to track form input
+        input.addEventListener('input', checkFormHasInput);
+        input.addEventListener('change', checkFormHasInput);
     });
     
     // Clear errors when interacting with cart buttons
@@ -1662,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', clearErrorOnInteraction);
     });
     
-    // Handle Edit Details button click
+    // Handle Edit Details button click from success modal
     const editDetailsBtn = document.getElementById('editDetailsBtn');
     if (editDetailsBtn) {
         editDetailsBtn.addEventListener('click', function(e) {
@@ -1672,11 +1560,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Handle Edit Details button click from preview step
+    const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
+    if (editDetailsPreviewBtn) {
+        editDetailsPreviewBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            goBackToForm();
+        });
+    }
+    
     // Initialize accordion auto-advance functionality
     setTimeout(() => {
         initializeAccordionAutoAdvance();
         console.log('Accordion auto-advance initialized');
     }, 500); // Delay to ensure all elements are loaded
+    
+    // Initialize Confirm Registration button as disabled
+    updateConfirmButtonState();
     
     // Ensure first accordion stays open on page load/refresh
     const firstAccordionButton = document.querySelector('#personalInfoHeading button');
@@ -1770,11 +1671,23 @@ function resetAllModalsAndForm() {
     // Reset email verification status
     emailVerified = false;
     
+    // Reset form input tracking
+    hasFormInput = false;
+    
     // Reset submission tracking
     submissionAttempts = 0;
     isCompletingRegistration = false;
     isEditingDetails = false;
     storedFormData = null;
+    
+    // Hide the "Edit Details" button in the preview step
+    const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
+    if (editDetailsPreviewBtn) {
+        editDetailsPreviewBtn.style.display = 'none';
+    }
+    
+    // Keep the "Edit Details" button visible in the success modal
+    // (removed: editDetailsBtn.style.display = 'none';)
     
     // Reset all service buttons
     document.querySelectorAll('.add-to-cart').forEach(button => {
@@ -1871,5 +1784,200 @@ function fillDummyData() {
     hideErrorMessage();
     hideFieldErrorsAccordion();
     
+    // Enable the Confirm Registration button
+    hasFormInput = true;
+    updateConfirmButtonState();
+    
     console.log('Dummy data filled successfully');
 }
+
+// Wizard navigation functions
+let currentWizardStep = 1;
+
+function goToWizardStep(stepNumber) {
+    // Hide current step content
+    document.getElementById(`wizardStep${currentWizardStep}`).style.display = 'none';
+    document.getElementById(`step${currentWizardStep}Footer`).style.display = 'none';
+    
+    // Show new step content
+    document.getElementById(`wizardStep${stepNumber}`).style.display = 'block';
+    document.getElementById(`step${stepNumber}Footer`).style.display = 'flex';
+    
+    // Update step indicators
+    updateWizardStepIndicators(stepNumber);
+    
+    // If we're moving to step 2, disable the "Back to Edit" button initially
+    if (stepNumber === 2) {
+        const backBtn = document.querySelector('#step2Footer button:first-child');
+        if (backBtn) {
+            backBtn.style.display = 'none';
+        }
+        // Disable the confirm button initially
+        updateConfirmButtonState();
+    }
+    
+    currentWizardStep = stepNumber;
+}
+
+function updateWizardStepIndicators(activeStep) {
+    // Update step styling
+    for (let i = 1; i <= 2; i++) {
+        const stepElement = document.getElementById(`step${i}`);
+        const stepLine = stepElement.nextElementSibling;
+        
+        if (i < activeStep) {
+            // Completed steps
+            stepElement.classList.remove('active');
+            stepElement.classList.add('completed');
+            if (stepLine && stepLine.classList.contains('step-line')) {
+                stepLine.classList.add('active');
+            }
+        } else if (i === activeStep) {
+            // Active step
+            stepElement.classList.add('active');
+            stepElement.classList.remove('completed');
+            if (stepLine && stepLine.classList.contains('step-line')) {
+                stepLine.classList.remove('active');
+            }
+        } else {
+            // Future steps
+            stepElement.classList.remove('active', 'completed');
+            if (stepLine && stepLine.classList.contains('step-line')) {
+                stepLine.classList.remove('active');
+            }
+        }
+    }
+    
+    // Scroll to top of modal
+    const modalBody = document.querySelector('#registrationModal .modal-body');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
+}
+
+function goBackToForm() {
+    goToWizardStep(1);
+}
+
+function proceedToPreview(event) {
+    // This will be called after form validation passes
+    // Collect all form data
+    const formData = collectFormData();
+    
+    // Store form data and cart state
+    storedFormData = {
+        formData: formData,
+        cartData: [...cart],
+        cartTotal: cartTotal
+    };
+    
+    // Generate preview HTML
+    const previewHTML = generateConfirmationHTML(formData);
+    
+    // Populate the preview section
+    document.getElementById('previewDetails').innerHTML = previewHTML;
+    
+    // Go to step 2
+    goToWizardStep(2);
+    
+    // Enable the Confirm Registration button
+    hasFormInput = true;
+    updateConfirmButtonState();
+    
+    // Show the "Edit Details" button in the preview step
+    const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
+    if (editDetailsPreviewBtn) {
+        editDetailsPreviewBtn.style.display = 'inline-block';
+    }
+}
+
+function closeRegistrationWizard() {
+    const registrationModal = bootstrap.Modal.getInstance(document.getElementById('registrationModal'));
+    if (registrationModal) {
+        registrationModal.hide();
+    }
+    resetAllModalsAndForm();
+}
+
+// Update form submission to use wizard flow
+document.getElementById('registrationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check for suspicious activity first
+    const suspiciousCheck = detectSuspiciousActivity();
+    if (suspiciousCheck.suspicious) {
+        showErrorMessage(suspiciousCheck.reason);
+        return;
+    }
+    
+    // Use the comprehensive validation function
+    if (!validateRegistrationForm()) {
+        return;
+    }
+    
+    // Update submission tracking
+    submissionAttempts++;
+    lastSubmissionTime = Date.now();
+    
+    // Proceed to preview step in wizard
+    proceedToPreview(e);
+});
+
+// Handle confirm registration from step 2
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('confirmRegistrationBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const button = this;
+            const originalHTML = button.innerHTML;
+            
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+            
+            // Set completion flag
+            isCompletingRegistration = true;
+            
+            // Complete the registration
+            setTimeout(() => {
+                completeRegistration();
+                
+                // Reset button state
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+                
+                // Reset completion flag after a longer delay
+                setTimeout(() => {
+                    isCompletingRegistration = false;
+                }, 2000);
+            }, 800);
+        });
+    }
+});
+
+// Modal initialization for wizard
+document.getElementById('registrationModal').addEventListener('shown.bs.modal', function() {
+    // Reset to step 1
+    currentWizardStep = 2;
+    goToWizardStep(1);
+    
+    // Focus on first input
+    const firstInput = this.querySelector('input');
+    if (firstInput) {
+        firstInput.focus();
+    }
+    
+    // Re-initialize accordion auto-advance
+    setTimeout(() => {
+        console.log('Re-initializing accordion auto-advance after modal opened...');
+        initializeAccordionAutoAdvance();
+    }, 200);
+});
+
+// Reset form when modal is closed
+document.getElementById('registrationModal').addEventListener('hidden.bs.modal', function() {
+    if (!isCompletingRegistration && !isEditingDetails) {
+        resetAllModalsAndForm();
+    }
+});
+

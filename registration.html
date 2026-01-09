@@ -85,14 +85,31 @@
     <div class="modal fade" id="registrationModal" tabindex="-1" aria-labelledby="registrationModalLabel">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content modal-custom">
+                <!-- Wizard Steps Indicator -->
+                <div class="modal-header bg-light border-bottom">
+                    <div class="wizard-steps w-100">
+                        <div class="step active" id="step1">
+                            <div class="step-number">1</div>
+                            <div class="step-label">Registration</div>
+                        </div>
+                        <div class="step-line active"></div>
+                        <div class="step" id="step2">
+                            <div class="step-number">2</div>
+                            <div class="step-label">Preview</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-3" id="closeWizard" aria-label="Close" onclick="closeRegistrationWizard()"></button>
+                </div>
+
                 <div class="modal-header border-0 pb-0">
                     <h5 class="modal-title text-primary" id="registrationModalLabel">
                         <i class="fas fa-user-edit me-2"></i>Complete Your Registration
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-4">
+                    <!-- Step 1: Registration Form -->
+                    <div id="wizardStep1" class="wizard-step-content">
+                        <div class="row g-4">
                         <!-- Registration Form Card -->
                         <div class="col-lg-8">
                             <div class="card registration-card h-100">
@@ -631,52 +648,52 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-info" onclick="fillDummyData()">
-                        <i class="fas fa-database me-1"></i>Fill Dummy Data
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                    <button type="submit" form="registrationForm" class="btn btn-success" id="completeRegistration">
-                        <i class="fas fa-check me-1"></i>Complete Registration
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+                    </div>
 
-    <!-- Confirmation Modal -->
-    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="confirmationModalLabel">
-                        <i class="fas fa-clipboard-check me-2"></i>Confirm Your Registration
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info d-flex align-items-center mb-4">
-                        <i class="fas fa-info-circle me-3 fa-lg"></i>
-                        <div>
-                            <strong>Please review your information carefully.</strong>
-                            <br>Make sure all details are correct before confirming your registration.
+                    <!-- Step 2: Preview/Confirmation -->
+                    <div id="wizardStep2" class="wizard-step-content" style="display: none;">
+                        <div class="alert alert-info d-flex align-items-center mb-4">
+                            <i class="fas fa-info-circle me-3 fa-lg"></i>
+                            <div>
+                                <strong>Please review your information carefully.</strong>
+                                <br>Make sure all details are correct before confirming your registration.
+                            </div>
+                        </div>
+                        <div id="previewDetails">
+                            <!-- Dynamic content will be populated here -->
                         </div>
                     </div>
-                    
-                    <div id="confirmationDetails">
-                        <!-- Dynamic content will be populated here -->
-                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="editDetailsBtn">
-                        <i class="fas fa-edit me-1"></i>Edit Details
-                    </button>
-                    <button type="button" class="btn btn-success" id="confirmRegistration">
-                        <i class="fas fa-check-circle me-1"></i>Confirm Registration
-                    </button>
+                <div class="modal-footer border-0 pt-0">
+                    <!-- Step 1 Footer (Registration Form) -->
+                    <div id="step1Footer" class="w-100 d-flex justify-content-between">
+                        <button type="button" class="btn btn-info" onclick="fillDummyData()">
+                            <i class="fas fa-database me-1"></i>Fill Dummy Data
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary" onclick="closeRegistrationWizard()">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                            <button type="submit" form="registrationForm" class="btn btn-success" id="proceedToPreview">
+                                <i class="fas fa-arrow-right me-1"></i>Next: Preview
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 Footer (Preview/Confirmation) -->
+                    <div id="step2Footer" class="w-100 d-flex justify-content-between" style="display: none;">
+                        <button type="button" class="btn btn-secondary" onclick="goBackToForm()">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Edit
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="editDetailsPreviewBtn" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-edit me-1"></i>Edit Details
+                            </button>
+                            <button type="button" class="btn btn-success" id="confirmRegistrationBtn">
+                                <i class="fas fa-check-circle me-1"></i>Confirm Registration
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -693,9 +710,14 @@
                     <h4 class="text-success mb-3">Registration Complete!</h4>
                     <p class="text-muted mb-4">Welcome aboard! Your registration has been successfully completed.</p>
                     <div id="registrationSummary" class="mb-4"></div>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-                        <i class="fas fa-home me-1"></i>Continue
-                    </button>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" id="editDetailsBtn" class="btn btn-secondary">
+                            <i class="fas fa-edit me-1"></i>Edit Details
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                            <i class="fas fa-home me-1"></i>Continue
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
