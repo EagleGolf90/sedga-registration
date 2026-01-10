@@ -49,6 +49,22 @@ function openRegistrationModal() {
     if (registrationModal) {
         const modal = new bootstrap.Modal(registrationModal);
         modal.show();
+        
+        // Initialize button states when registration page starts
+        // Enable: "Fill Dummy Data", "Cancel", "Next Preview"
+        // Disable: "Confirm Registration", "Back to Edit"
+        const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+        const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
+        const nextPreviewBtn = document.getElementById('proceedToPreview');
+        const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
+        const backToEditBtn = document.querySelector('button[onclick="goBackToForm()"]');
+        
+        if (fillDummyDataBtn) fillDummyDataBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        if (nextPreviewBtn) nextPreviewBtn.disabled = false;
+        if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
+        if (backToEditBtn) backToEditBtn.disabled = true;
+        
         return true;
     }
     
@@ -1873,6 +1889,24 @@ function updateWizardStepIndicators(activeStep) {
 
 function goBackToForm() {
     goToWizardStep(1);
+    
+    // When "Edit Details" button is selected:
+    // Enable: "Cancel" and "Next Preview" buttons
+    // Disable: "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
+    const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+    const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
+    const nextPreviewBtn = document.getElementById('proceedToPreview');
+    const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
+    const backToEditBtn = document.querySelector('button[onclick="goBackToForm()"]');
+    
+    // Enable "Cancel" and "Next Preview" buttons
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (nextPreviewBtn) nextPreviewBtn.disabled = false;
+    
+    // Disable "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
+    if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
+    if (backToEditBtn) backToEditBtn.disabled = true;
+    if (fillDummyDataBtn) fillDummyDataBtn.disabled = true;
 }
 
 function proceedToPreview(event) {
@@ -1905,6 +1939,24 @@ function proceedToPreview(event) {
     if (editDetailsPreviewBtn) {
         editDetailsPreviewBtn.style.display = 'inline-block';
     }
+    
+    // Manage button states when "Next: Preview" button is selected
+    // Enable: "Edit Details", "Confirm Registration", and "Cancel" buttons
+    // Disable: "Next Preview" and "Fill Dummy Data" buttons
+    const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+    const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
+    const nextPreviewBtn = document.getElementById('proceedToPreview');
+    const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
+    const editDetailsBtn = document.getElementById('editDetailsPreviewBtn');
+    
+    // Disable "Next Preview" and "Fill Dummy Data" buttons
+    if (nextPreviewBtn) nextPreviewBtn.disabled = true;
+    if (fillDummyDataBtn) fillDummyDataBtn.disabled = true;
+    
+    // Enable "Edit Details", "Confirm Registration", and "Cancel" buttons
+    if (editDetailsBtn) editDetailsBtn.disabled = false;
+    if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
 }
 
 function closeRegistrationWizard() {
@@ -1919,15 +1971,29 @@ function closeRegistrationWizard() {
 document.getElementById('registrationForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
+    // Disable the "Next: Preview" button immediately to prevent multiple submissions
+    const nextPreviewBtn = document.getElementById('proceedToPreview');
+    if (nextPreviewBtn) {
+        nextPreviewBtn.disabled = true;
+    }
+    
     // Check for suspicious activity first
     const suspiciousCheck = detectSuspiciousActivity();
     if (suspiciousCheck.suspicious) {
         showErrorMessage(suspiciousCheck.reason);
+        // Re-enable button if validation fails
+        if (nextPreviewBtn) {
+            nextPreviewBtn.disabled = false;
+        }
         return;
     }
     
     // Use the comprehensive validation function
     if (!validateRegistrationForm()) {
+        // Re-enable button if validation fails
+        if (nextPreviewBtn) {
+            nextPreviewBtn.disabled = false;
+        }
         return;
     }
     
