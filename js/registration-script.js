@@ -79,11 +79,14 @@ function checkFormHasInput() {
     return false;
 }
 
-// Update confirm registration button state based on form input
+// Update confirm registration button state based on form input and current wizard step
 function updateConfirmButtonState() {
     const confirmBtn = document.getElementById('confirmRegistrationBtn');
     if (confirmBtn) {
-        confirmBtn.disabled = !hasFormInput;
+        // Only enable the confirm button if:
+        // 1. We're on the preview page (step 2)
+        // 2. We have form input
+        confirmBtn.disabled = !(hasFormInput && currentWizardStep === 2);
     }
 }
 
@@ -1812,8 +1815,21 @@ function goToWizardStep(stepNumber) {
         if (backBtn) {
             backBtn.style.display = 'none';
         }
-        // Disable the confirm button initially
+        // Enable the confirm button on preview page
         updateConfirmButtonState();
+        // Enable the "Edit Details" button on preview page
+        const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
+        if (editDetailsPreviewBtn) {
+            editDetailsPreviewBtn.disabled = false;
+        }
+    } else if (stepNumber === 1) {
+        // Disable the confirm button when on the form page
+        updateConfirmButtonState();
+        // Disable the "Edit Details" button on registration page
+        const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
+        if (editDetailsPreviewBtn) {
+            editDetailsPreviewBtn.disabled = true;
+        }
     }
     
     currentWizardStep = stepNumber;

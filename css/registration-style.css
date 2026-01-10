@@ -796,3 +796,8 @@ body {
         opacity: 1;
     }
 }
+
+/* Step 2 Footer - Keep Confirm button on the right and Edit Details on left */
+#step2Footer {
+    align-items: center;
+}
