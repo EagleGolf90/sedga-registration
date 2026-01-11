@@ -12,36 +12,36 @@ let storedFormData = null;
 // Track whether the confirm button should be enabled
 let hasFormInput = false;
 
-// reCAPTCHA verification functionality (commented out to save)
-// function verifyRecaptchaAndOpenModal() {
-//     const recaptchaResponse = grecaptcha.getResponse();
-//     const errorDiv = document.getElementById('recaptchaError');
-//     
-//     if (!recaptchaResponse || recaptchaResponse.length === 0) {
-//         // reCAPTCHA not completed
-//         if (errorDiv) {
-//             errorDiv.style.display = 'block';
-//             setTimeout(() => {
-//                 errorDiv.style.display = 'none';
-//             }, 5000);
-//         }
-//         return false;
-//     }
-//     
-//     // reCAPTCHA verified, hide error and open modal
-//     if (errorDiv) {
-//         errorDiv.style.display = 'none';
-//     }
-//     
-//     const registrationModal = document.getElementById('registrationModal');
-//     if (registrationModal) {
-//         const modal = new bootstrap.Modal(registrationModal);
-//         modal.show();
-//         return true;
-//     }
-//     
-//     return false;
-// }
+// reCAPTCHA verification functionality
+function verifyRecaptchaAndOpenModal() {
+    const recaptchaResponse = grecaptcha.getResponse();
+    const errorDiv = document.getElementById('recaptchaError');
+    
+    if (!recaptchaResponse || recaptchaResponse.length === 0) {
+        // reCAPTCHA not completed
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        return false;
+    }
+    
+    // reCAPTCHA verified, hide error and open modal
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+    
+    const registrationModal = document.getElementById('registrationModal');
+    if (registrationModal) {
+        const modal = new bootstrap.Modal(registrationModal);
+        modal.show();
+        return true;
+    }
+    
+    return false;
+}
 
 // Simplified function without reCAPTCHA verification
 function openRegistrationModal() {

@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/registration-style.css" rel="stylesheet">
     <!-- reCAPTCHA commented out to save -->
-    <!-- <script>
+    <script>
         // Define reCAPTCHA callback early so it's available when the API loads
         function onRecaptchaChange() {
             const recaptchaResponse = grecaptcha.getResponse();
@@ -24,9 +24,9 @@
                 }
             }
         }
-    </script> -->
+    </script>
     <script src="js/registration-script.js" defer></script>
-    <!-- <script src="https://www.google.com/recaptcha/api.js" async defer></script> -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
     <div class="container-fluid">
@@ -42,15 +42,15 @@
                 <!-- Main Registration Button -->
                 <div class="text-center mb-5">
                     <!-- reCAPTCHA commented out to save -->
-                    <!-- <div class="d-flex justify-content-center mb-3">
+                    <div class="d-flex justify-content-center mb-3">
                         <div class="g-recaptcha" data-sitekey="6LcO9vErAAAAACrXaBNfrSQmeR8A3sw62g1rzxr-" data-callback="onRecaptchaChange"></div>
-                    </div> -->
-                    <button type="button" id="startRegistrationBtn" class="btn btn-primary btn-lg px-5 py-3" onclick="openRegistrationModal()">
+                    </div>
+                    <button type="button" id="startRegistrationBtn" class="btn btn-primary btn-lg px-5 py-3" onclick="openRegistrationModal()" disabled>
                         <i class="fas fa-rocket me-2"></i>Start Registration
                     </button>
-                    <!-- <div id="recaptchaError" class="text-danger mt-2" style="display: none;">
+                    <div id="recaptchaError" class="text-danger mt-2" style="display: none;">
                         <i class="fas fa-exclamation-circle me-1"></i>Please complete the reCAPTCHA verification
-                    </div> -->
+                    </div>
                 </div>
 
                 <!-- Features Section -->
@@ -711,9 +711,6 @@
                     <p class="text-muted mb-4">Welcome aboard! Your registration has been successfully completed.</p>
                     <div id="registrationSummary" class="mb-4"></div>
                     <div class="d-flex gap-2 justify-content-center">
-                        <!-- <button type="button" id="editDetailsBtn" class="btn btn-secondary">
-                            <i class="fas fa-edit me-1"></i>Edit Details
-                        </button> -->
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
                             <i class="fas fa-home me-1"></i>Continue
                         </button>
