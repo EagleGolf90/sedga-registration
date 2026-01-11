@@ -4,3 +4,4 @@ includes/config*.php
 logs/*.log
 node_modules/
 specs/
+instructions/

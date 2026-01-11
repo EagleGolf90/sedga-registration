@@ -1,86 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration with Cart</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="css/registration-style.css" rel="stylesheet">
-    <!-- reCAPTCHA commented out to save -->
-    <script>
-        // Define reCAPTCHA callback early so it's available when the API loads
-        function onRecaptchaChange() {
-            const recaptchaResponse = grecaptcha.getResponse();
-            const startBtn = document.getElementById('startRegistrationBtn');
-            
-            if (startBtn) {
-                if (recaptchaResponse && recaptchaResponse.length > 0) {
-                    // reCAPTCHA is checked, enable the button
-                    startBtn.disabled = false;
-                } else {
-                    // reCAPTCHA is not checked, disable the button
-                    startBtn.disabled = true;
-                }
-            }
-        }
-    </script>
-    <script src="js/registration-script.js" defer></script>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-</head>
-<body>
-
-<div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="text-center mb-4">
-                <h1 class="display-4 text-primary mb-3">
-                    <i class="fas fa-user me-3"></i>SEDGA 2026 Registration
-                </h1>
-                <p class="lead text-muted">Join us today and start your journey</p>
-            </div>
-
-            <!-- Main Registration Button -->
-            <div class="text-center mb-5">
-                <!-- reCAPTCHA commented out to save -->
-                <div class="d-flex justify-content-center mb-3">
-                    <div class="g-recaptcha" data-sitekey="6LcO9vErAAAAACrXaBNfrSQmeR8A3sw62g1rzxr-" data-callback="onRecaptchaChange"></div>
-                </div>
-                <button type="button" id="startRegistrationBtn" class="btn btn-primary btn-lg px-5 py-3" onclick="openRegistrationModal()" disabled>
-                    <i class="fas fa-rocket me-2"></i>Start Registration
-                </button>
-                <div id="recaptchaError" class="text-danger mt-2" style="display: none;">
-                    <i class="fas fa-exclamation-circle me-1"></i>Please complete the reCAPTCHA verification
-                </div>
-            </div>
-
-            <!-- Features Section -->
-            <div class="row mb-5">
-                <div class="col-md-4 text-center mb-3">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
-                    </div>
-                    <h5>Secure Registration</h5>
-                    <p class="text-muted">Your data is protected with enterprise-grade security</p>
-                </div>
-                <div class="col-md-4 text-center mb-3">
-                    <div class="feature-icon">
-                        <i class="fas fa-shopping-cart fa-3x text-info mb-3"></i>
-                    </div>
-                    <h5>Smart Cart System</h5>
-                    <p class="text-muted">Add services and products during registration</p>
-                </div>
-                <div class="col-md-4 text-center mb-3">
-                    <div class="feature-icon">
-                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
-                    </div>
-                    <h5>Quick Process</h5>
-                    <p class="text-muted">Complete your registration in just a few minutes</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+/**
+ * Registration Modal - Main registration form with accordions and cart
+ */
+?>
 
 <!-- Registration Modal -->
 <div class="modal fade" id="registrationModal" tabindex="-1" aria-labelledby="registrationModalLabel">
@@ -699,29 +621,3 @@
         </div>
     </div>
 </div>
-
-<!-- Success Modal -->
-<div class="modal fade" id="successModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center py-5">
-                <div class="success-icon mb-4">
-                    <i class="fas fa-check-circle fa-4x text-success"></i>
-                </div>
-                <h4 class="text-success mb-3">Registration Complete!</h4>
-                <p class="text-muted mb-4">Welcome aboard! Your registration has been successfully completed.</p>
-                <div id="registrationSummary" class="mb-4"></div>
-                <div class="d-flex gap-2 justify-content-center">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-                        <i class="fas fa-home me-1"></i>Continue
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
-</html>
