@@ -5,7 +5,7 @@
  */
 
 // Include header (meta tags, stylesheets, scripts)
-include 'header.php';
+include '../html/header.php';
 
 // Landing Page Content
 include 'landing-page.php';
@@ -17,5 +17,5 @@ include 'modal-registration.php';
 include 'modal-success.php';
 
 // Footer (scripts and closing tags)
-include 'footer.php';
+include '../html/footer.php';
 ?>
