@@ -1,7 +1,6 @@
                                                             <select class="form-select" id="gender" required>
                                                                 <option value="">Select Gender</option>
-                                                                <option value="male">Male</option>
-                                                                <option value="female">Female</option>
-                                                                <option value="other">Other</option>
-                                                                <option value="prefer-not-to-say">Prefer not to say</option>
+                                                                <option value="1">Male</option>
+                                                                <option value="2">Female</option>
+                                                                <option value="3">Prefer not to say</option>
                                                             </select>

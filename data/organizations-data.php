@@ -8,5 +8,5 @@
                                                                 <option value="6">North Carolina (NCDGA)</option>
                                                                 <option value="7">New Jersey (NJDGA)</option>
                                                                 <option value="9">Western Pennsylvania (WPDGA)</option>
-                                                                <option value="10">none</option>
+                                                                <option value="10">NONE</option>
                                                             </select>
