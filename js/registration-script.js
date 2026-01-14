@@ -1,3 +1,53 @@
+// Prices data object
+let pricesData = {
+    eventCategories: [],
+    optionalServices: []
+};
+
+// Load prices from JSON file
+async function loadPricesData() {
+    try {
+        const response = await fetch('../data/prices-data.json');
+        if (!response.ok) {
+            console.error('Failed to load prices data:', response.statusText);
+            return false;
+        }
+        pricesData = await response.json();
+        updatePricesInDOM();
+        return true;
+    } catch (error) {
+        console.error('Error loading prices data:', error);
+        return false;
+    }
+}
+
+// Update prices in the DOM from pricesData
+function updatePricesInDOM() {
+    // Update event categories
+    pricesData.eventCategories.forEach(category => {
+        const serviceItem = document.querySelector(`[data-service="${category.id}"]`);
+        if (serviceItem) {
+            serviceItem.dataset.price = category.price.toFixed(2);
+            const titleElement = serviceItem.querySelector('.service-title');
+            const priceElement = serviceItem.querySelector('.price-text');
+            if (titleElement) titleElement.textContent = category.name;
+            if (priceElement) priceElement.textContent = '$' + category.price.toFixed(2);
+        }
+    });
+    
+    // Update optional services
+    pricesData.optionalServices.forEach(service => {
+        const serviceItem = document.querySelector(`[data-service="${service.id}"]`);
+        if (serviceItem) {
+            serviceItem.dataset.price = service.price.toFixed(2);
+            const titleElement = serviceItem.querySelector('.service-title');
+            const priceElement = serviceItem.querySelector('.price-text');
+            if (titleElement) titleElement.textContent = service.name;
+            if (priceElement) priceElement.textContent = '$' + service.price.toFixed(2);
+        }
+    });
+}
+
 // Cart functionality
 let cart = [];
 let cartTotal = 0;
@@ -1546,6 +1596,9 @@ window.testOpenGolfSection = testOpenGolfSection;
 
 // Initialize page when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Load prices data from JSON file
+    loadPricesData();
+    
     // Disable browser validation tooltips
     disableBrowserValidationTooltips();
     
@@ -1769,7 +1822,7 @@ function fillDummyData() {
     
     // Golf Information
     document.getElementById('age').value = '45';
-    document.getElementById('gender').value = 'male';
+    document.getElementById('gender').value = '1';
     document.getElementById('hole18Average').value = '85';
     document.getElementById('org_id').value = '3'; // Georgia (GDGA)
     
@@ -1785,7 +1838,7 @@ function fillDummyData() {
     
     // Emergency Contact Information
     document.getElementById('emergencyName').value = 'Jane Smith';
-    document.getElementById('emergencyRelationship').value = 'spouse';
+    document.getElementById('emergencyRelationship').value = '2';
     document.getElementById('emergencyEmail').value = 'jane.smith@example.com';
     document.getElementById('emergencyPhoneType').value = '1'; // Mobile
     document.getElementById('emergencyPhone').value = '555-987-6543';

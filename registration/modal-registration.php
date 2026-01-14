@@ -43,12 +43,11 @@
                                         <?php include 'payment-info-accordion.php'; ?>
 
                                         <?php include 'security-verification-accordion.php'; ?>
-
                                     </div><!-- End Accordion -->
                                 </form>
                             </div>
                         </div>
-                    </div>
+                    </div> <!-- End Registration Form Card -->
 
                     <?php include 'cart-card.php'; ?>
                   </div>

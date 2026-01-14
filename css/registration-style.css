@@ -801,3 +801,8 @@ body {
 #step2Footer {
     align-items: center;
 }
+
+/* Ensure Confirm Registration button is always on the right */
+#step2Footer > div:last-child {
+    margin-left: auto;
+}

@@ -1,3 +1,5 @@
+                    <?php include '../data/prices-loader.php'; ?>
+
                     <!-- Cart Card -->
                     <div class="col-lg-4">
                         <div class="card cart-card h-100">
@@ -16,50 +18,19 @@
                                     <h6 class="text-primary mb-3 border-bottom pb-2">
                                         <i class="fas fa-golf-ball me-1"></i>Event Categories
                                     </h6>
-                                    <div class="service-item" data-service="open" data-price="320.00">
+                                    <?php foreach ($prices['eventCategories'] as $category): ?>
+                                    <div class="service-item" data-service="<?php echo htmlspecialchars($category['id']); ?>" data-price="<?php echo number_format($category['price'], 2); ?>">
                                         <div class="service-info">
-                                            <div class="service-title">Open</div>
+                                            <div class="service-title"><?php echo htmlspecialchars($category['name']); ?></div>
                                         </div>
                                         <div class="service-price">
-                                            <span class="price-text">$320.00</span>
+                                            <span class="price-text">$<?php echo number_format($category['price'], 2); ?></span>
                                             <button class="btn btn-sm btn-outline-success add-to-cart">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="service-item" data-service="seniors" data-price="310.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Seniors</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$310.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="service-item" data-service="super-seniors" data-price="300.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Super Seniors</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$300.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="service-item" data-service="women" data-price="320.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Women</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$320.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
 
                                 <!-- Optional Services -->
@@ -67,62 +38,19 @@
                                     <h6 class="text-info mb-3 border-bottom pb-2">
                                         <i class="fas fa-plus-circle me-1"></i>Optional
                                     </h6>
-                                    <div class="service-item" data-service="handicap" data-price="20.00">
+                                    <?php foreach ($prices['optionalServices'] as $service): ?>
+                                    <div class="service-item" data-service="<?php echo htmlspecialchars($service['id']); ?>" data-price="<?php echo number_format($service['price'], 2); ?>">
                                         <div class="service-info">
-                                            <div class="service-title">Handicap Tournament</div>
+                                            <div class="service-title"><?php echo htmlspecialchars($service['name']); ?></div>
                                         </div>
                                         <div class="service-price">
-                                            <span class="price-text">$20.00</span>
+                                            <span class="price-text">$<?php echo number_format($service['price'], 2); ?></span>
                                             <button class="btn btn-sm btn-outline-success add-to-cart">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="service-item" data-service="banquet" data-price="25.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Awards & Luncheon</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$25.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="service-item" data-service="skins-tuesday" data-price="5.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Skins - Tuesday</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$5.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="service-item" data-service="skins-wednesday" data-price="5.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Skins - Wednesday</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$5.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="service-item" data-service="skins-thursday" data-price="5.00">
-                                        <div class="service-info">
-                                            <div class="service-title">Skins - Thursday</div>
-                                        </div>
-                                        <div class="service-price">
-                                            <span class="price-text">$5.00</span>
-                                            <button class="btn btn-sm btn-outline-success add-to-cart">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
 
                                 <!-- Cart Items -->
