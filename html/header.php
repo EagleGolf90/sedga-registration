@@ -32,6 +32,6 @@
         }
     </script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script src="../js/registration-script.js" defer></script>
+    <script src="../js/registration-scripts.js" defer></script>
  </head>
 <body>

@@ -4,25 +4,25 @@
     {
       "id": "open",
       "name": "Open",
-      "price": 320.00,
+      "price": 315.00,
       "category": "main"
     },
     {
       "id": "seniors",
       "name": "Seniors",
-      "price": 310.00,
+      "price": 315.00,
       "category": "main"
     },
     {
       "id": "super-seniors",
       "name": "Super Seniors",
-      "price": 300.00,
+      "price": 315.00,
       "category": "main"
     },
     {
       "id": "women",
       "name": "Women",
-      "price": 320.00,
+      "price": 315.00,
       "category": "main"
     }
   ],

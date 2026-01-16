@@ -4,6 +4,9 @@ let pricesData = {
     optionalServices: []
 };
 
+// Winners data object
+let winnersData = [];
+
 // Load prices from JSON file
 async function loadPricesData() {
     try {
@@ -19,6 +22,40 @@ async function loadPricesData() {
         console.error('Error loading prices data:', error);
         return false;
     }
+}
+
+// Load winners data from JSON file
+async function loadWinnersData() {
+    try {
+        const response = await fetch('../data/winners-data.json');
+        if (!response.ok) {
+            console.error('Failed to load winners data:', response.statusText);
+            return false;
+        }
+        winnersData = await response.json();
+        console.log('Winners data loaded:', winnersData);
+        return true;
+    } catch (error) {
+        console.error('Error loading winners data:', error);
+        return false;
+    }
+}
+
+// Check if current registrant is a winner
+function getWinnerInfo(firstName, lastName) {
+    if (!firstName || !lastName) {
+        return null;
+    }
+    
+    const firstNameLower = firstName.trim().toLowerCase();
+    const lastNameLower = lastName.trim().toLowerCase();
+    
+    const winner = winnersData.find(w => 
+        w.firstName.toLowerCase() === firstNameLower && 
+        w.lastName.toLowerCase() === lastNameLower
+    );
+    
+    return winner || null;
 }
 
 // Update prices in the DOM from pricesData
@@ -320,7 +357,8 @@ let lastSubmissionTime = 0;
 let emailVerified = false;
 const MAX_SUBMISSIONS = 3;
 const SUBMISSION_COOLDOWN = 300000; // 5 minutes in milliseconds
-const ALLOWED_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com']; // Add more as needed
+// const ALLOWED_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com']; // Add more as needed
+const ALLOWED_DOMAINS = ['gmail.com', 'juno.com', 'aol.com', 'me.com', 'icloud.com', 'rogers.com', 'comcast.net', 'yahoo.com', 'sbcglobal.net', 'rochester.rr.com', 'live.ca', 'atlanticbb.net', 'copi.org', 'msn.com', 'hotmail.com'];
 
 // Check for suspicious behavior
 function detectSuspiciousActivity() {
@@ -446,7 +484,7 @@ function updateCartDisplay() {
         document.getElementById('headerTotal').textContent = '$0.00';
         cartSummary.style.display = 'none';
     } else {
-        cartContainer.innerHTML = cart.map(item => {
+        let cartItemsHtml = cart.map(item => {
             const totalPrice = item.service === 'banquet' && item.peopleCount ? 
                 (item.price * item.peopleCount).toFixed(2) : 
                 (item.price * item.quantity).toFixed(2);
@@ -490,6 +528,52 @@ function updateCartDisplay() {
             cartItemHtml += `</div>`;
             return cartItemHtml;
         }).join('');
+        
+        // Add Hall of Fame Member Fee discount if applicable
+        const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
+        if (isHallOfFame && cart.length > 0) {
+            cartItemsHtml += `
+                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #28a745;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-truncate me-2"><strong>Hall of Fame Discount</strong><br/>Free Lunch<br/>Free Membership</span>
+                        <span class="fw-bold text-success">-$45.00</span>
+                    </div>
+                </div>`;
+        }
+        
+        // Add SEDGA Officer discount if applicable (only if Hall of Fame is NOT selected)
+        const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
+        if (isSedgaOfficer && !isHallOfFame && cart.length > 0) {
+            cartItemsHtml += `
+                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #007bff;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-truncate me-2"><strong>SEDGA Officer Discount</strong><br/>Free Lunch</span>
+                        <span class="fw-bold text-info">-$25.00</span>
+                    </div>
+                </div>`;
+        }
+        
+        // Add champion discount if applicable (1 or 3 round(s) = $75 or $225 discount)
+        const firstName = (document.getElementById('firstName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+        const lastName = (document.getElementById('lastName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+        
+        // Check if current registrant is a winner
+        const winner = getWinnerInfo(firstName, lastName);
+        if (winner && cart.length > 0) {
+            const discountAmount = winner.discount;
+            cartItemsHtml += `
+                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <strong>${winner.division} Champion</strong><br/>
+                            <small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small>
+                        </div>
+                        <span class="fw-bold text-success">-$${discountAmount.toFixed(2)}</span>
+                    </div>
+                </div>`;
+        }
+        
+        cartContainer.innerHTML = cartItemsHtml;
         
         // Add remove functionality
         document.querySelectorAll('.remove-item').forEach(button => {
@@ -548,12 +632,33 @@ function updateCartDisplay() {
         });
         
         // Calculate totals - account for people count in banquet items
-        const total = cart.reduce((sum, item) => {
+        let total = cart.reduce((sum, item) => {
             if (item.service === 'banquet' && item.peopleCount) {
                 return sum + (item.price * item.peopleCount);
             }
             return sum + (item.price * item.quantity);
         }, 0);
+        
+        // Apply Hall of Fame discount ($45 free member discount and free lunch)
+        if (isHallOfFame && total > 0) {
+            total -= 45;
+            total = Math.max(0, total); // Ensure total doesn't go below zero
+        }
+        
+        // Apply SEDGA Officer discount ($25 off) - only if Hall of Fame is NOT selected
+        if (isSedgaOfficer && !isHallOfFame && total > 0) {
+            total -= 25;
+            total = Math.max(0, total); // Ensure total doesn't go below zero
+        }
+        
+        // Apply winner discount (if winner is found)
+        if (winner && total > 0) {
+            total -= winner.discount;
+            total = Math.max(0, total); // Ensure total doesn't go below zero
+        }
+        
+        // Store the calculated total in the global cartTotal variable
+        cartTotal = total;
         
         document.getElementById('total').textContent = `$${total.toFixed(2)}`;
         document.getElementById('headerTotal').textContent = `$${total.toFixed(2)}`;
@@ -614,60 +719,99 @@ function updateCartDisplay() {
 
 // Complete registration function
 function completeRegistration() {
-    
     // Get form data
     const formData = {
-        firstName: document.getElementById('firstName').value,
-        lastName: document.getElementById('lastName').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value
+        firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
+        lastName: document.getElementById('lastName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
+        email: document.getElementById('email').value.toLowerCase(),
+        phoneType: parseInt(document.getElementById('phoneType')?.value || 0),
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address')?.value || '',
+        city: document.getElementById('city')?.value || '',
+        state: document.getElementById('state')?.value || '',
+        zipCode: document.getElementById('zipCode')?.value || '',
+        country: document.getElementById('country')?.value || '',
+        age: parseInt(document.getElementById('age')?.value || 0),
+        gender: parseInt(document.getElementById('gender')?.value || 0),
+        hole18Average: parseInt(document.getElementById('hole18Average')?.value || 0),
+        org_id: parseInt(document.getElementById('org_id')?.value || 0),
+        sedgaOfficer: document.getElementById('sedgaOfficer')?.checked ? 1 : 0,
+        sedgaHallOfFame: document.getElementById('sedgaHallOfFame')?.checked ? 1 : 0,
+        ghinNumber: document.getElementById('ghinNumber')?.value || '',
+        emergencyName: document.getElementById('emergencyName')?.value || '',
+        emergencyRelationship: parseInt(document.getElementById('emergencyRelationship')?.value || 0),
+        emergencyEmail: (document.getElementById('emergencyEmail')?.value || '').toLowerCase(),
+        emergencyPhoneType: parseInt(document.getElementById('emergencyPhoneType')?.value || 0),
+        emergencyPhone: document.getElementById('emergencyPhone')?.value || '',
+        sendPayment: parseInt(document.getElementById('sendPayment')?.value || 0),
+        sendUsername: document.getElementById('sendUsername')?.value || '',
+        receivePayment: parseInt(document.getElementById('receivePayment')?.value || 0),
+        receiveUsername: document.getElementById('receiveUsername')?.value || '',
+        cart: cart,
+        cartTotal: cartTotal
     };
-    
-    // Add GHIN number if handicap tournament is selected
-    const hasHandicapTournament = cart.some(item => item.service === 'handicap');
-    if (hasHandicapTournament) {
-        formData.ghinNumber = document.getElementById('ghinNumber').value;
-    }
-    
-    // Create simple success message without detailed registration info and cart items
-    const summary = `
-        <div class="text-center">
-            <p class="text-muted">Thank you, <strong>${formData.firstName} ${formData.lastName}</strong>!</p>
-            <p class="text-muted">A confirmation email will be sent to <strong>${formData.email}</strong></p>
-        </div>
-    `;
-    
-    document.getElementById('registrationSummary').innerHTML = summary;
-    
-    // Show the "Edit Details" button in the success modal
-    const editDetailsBtn = document.getElementById('editDetailsBtn');
-    if (editDetailsBtn) {
-        editDetailsBtn.style.display = 'inline-block';
-    }
-    
-    // Hide all existing modals first
-    const registrationModal = bootstrap.Modal.getInstance(document.getElementById('registrationModal'));
-    const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-    
-    if (registrationModal) {
-        registrationModal.hide();
-    }
-    if (confirmationModal) {
-        confirmationModal.hide();
-    }
-    
-    // Show success modal after ensuring other modals are closed
-    setTimeout(() => {
-        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-        successModal.show();
-        
-        // Auto-close success modal after 5 seconds and reset everything
-        setTimeout(() => {
-            successModal.hide();
-            resetAllModalsAndForm();
-            console.log('All modals and form data have been reset');
-        }, 5000);
-    }, 500);
+
+    // Send AJAX request to insert-registration.php
+    fetch('../registration/insert-registration.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Registration saved successfully:', data);
+            
+            // Create simple success message
+            const summary = `
+                <div class="text-center">
+                    <p class="text-muted">Thank you, <strong>${formData.firstName} ${formData.lastName}</strong>!</p>
+                    <p class="text-muted">A confirmation email will be sent to <strong>${formData.email}</strong></p>
+                </div>
+            `;
+            
+            document.getElementById('registrationSummary').innerHTML = summary;
+            
+            // Show the "Edit Details" button in the success modal
+            const editDetailsBtn = document.getElementById('editDetailsBtn');
+            if (editDetailsBtn) {
+                editDetailsBtn.style.display = 'inline-block';
+            }
+            
+            // Hide all existing modals first
+            const registrationModal = bootstrap.Modal.getInstance(document.getElementById('registrationModal'));
+            const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+            
+            if (registrationModal) {
+                registrationModal.hide();
+            }
+            if (confirmationModal) {
+                confirmationModal.hide();
+            }
+            
+            // Show success modal after ensuring other modals are closed
+            setTimeout(() => {
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                
+                // Auto-close success modal after 5 seconds and reset everything
+                setTimeout(() => {
+                    successModal.hide();
+                    resetAllModalsAndForm();
+                    console.log('All modals and form data have been reset');
+                }, 5000);
+            }, 500);
+        } else {
+            console.error('Registration failed:', data.message);
+            alert('Error saving registration: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('AJAX error:', error);
+        alert('Error connecting to server: ' + error.message);
+    });
 }
 
 // Show confirmation modal with all user data (legacy - now uses wizard step 2)
@@ -735,9 +879,9 @@ function handleEditDetails() {
 function collectFormData() {
     const formData = {
         // Personal Information
-        firstName: document.getElementById('firstName').value,
-        lastName: document.getElementById('lastName').value,
-        email: document.getElementById('email').value,
+        firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
+        lastName: document.getElementById('lastName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
+        email: document.getElementById('email').value.toLowerCase(),
         phoneType: document.getElementById('phoneType').value,
         phone: document.getElementById('phone').value,
         address: document.getElementById('address').value,
@@ -757,7 +901,7 @@ function collectFormData() {
         // Emergency Contact
         emergencyName: document.getElementById('emergencyName').value,
         emergencyRelationship: document.getElementById('emergencyRelationship').value,
-        emergencyEmail: document.getElementById('emergencyEmail').value,
+        emergencyEmail: document.getElementById('emergencyEmail').value.toLowerCase(),
         emergencyPhoneType: document.getElementById('emergencyPhoneType').value,
         emergencyPhone: document.getElementById('emergencyPhone').value,
         
@@ -1085,6 +1229,50 @@ function generateConfirmationHTML(data) {
                                             </tr>
                                         `;
                                     }).join('')}
+                                    
+                                    <!-- Discounts -->
+                                    ${(() => {
+                                        let discountsHTML = '';
+                                        const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
+                                        const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
+                                        const firstName = document.getElementById('firstName')?.value?.trim() || '';
+                                        const lastName = document.getElementById('lastName')?.value?.trim() || '';
+                                        const winner = getWinnerInfo(firstName, lastName);
+                                        
+                                        if (isHallOfFame) {
+                                            discountsHTML += `
+                                                <tr style="border-top: 1px solid #28a745;">
+                                                    <td><strong style="color: #28a745;">Hall of Fame Discount</strong><br/><small class="text-muted">Free Lunch, Free Membership</small></td>
+                                                    <td>1</td>
+                                                    <td>-$45.00</td>
+                                                    <td style="color: #28a745;"><strong>-$45.00</strong></td>
+                                                </tr>
+                                            `;
+                                        } else if (isSedgaOfficer) {
+                                            discountsHTML += `
+                                                <tr style="border-top: 1px solid #007bff;">
+                                                    <td><strong style="color: #007bff;">SEDGA Officer Discount</strong><br/><small class="text-muted">Free Lunch</small></td>
+                                                    <td>1</td>
+                                                    <td>-$25.00</td>
+                                                    <td style="color: #007bff;"><strong>-$25.00</strong></td>
+                                                </tr>
+                                            `;
+                                        }
+                                        
+                                        if (winner) {
+                                            const discountAmount = winner.discount;
+                                            discountsHTML += `
+                                                <tr style="border-top: 1px solid #20c997;">
+                                                    <td><strong style="color: #20c997;">${winner.division} Champion</strong><br/><small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small></td>
+                                                    <td>1</td>
+                                                    <td>-$${discountAmount.toFixed(2)}</td>
+                                                    <td style="color: #20c997;"><strong>-$${discountAmount.toFixed(2)}</strong></td>
+                                                </tr>
+                                            `;
+                                        }
+                                        
+                                        return discountsHTML;
+                                    })()}
                                 </tbody>
                                 <tfoot>
                                     <tr class="fw-bold">
@@ -1147,6 +1335,94 @@ function isValidEmail(email) {
     return true;
 }
 
+// Emergency contact field formatting
+document.addEventListener('DOMContentLoaded', function() {
+    // Format first name as pascal case (capitalize first letter of each word)
+    const firstNameInput = document.getElementById('firstName');
+    if (firstNameInput) {
+        firstNameInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+        
+        firstNameInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+    }
+
+    // Format last name as pascal case (capitalize first letter of each word)
+    const lastNameInput = document.getElementById('lastName');
+    if (lastNameInput) {
+        lastNameInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+        
+        lastNameInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+    }
+
+    // Format email as lowercase
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase();
+        });
+        
+        emailInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase();
+        });
+    }
+
+    // Format city as pascal case (capitalize first letter of each word)
+    const cityInput = document.getElementById('city');
+    if (cityInput) {
+        cityInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+        
+        cityInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+    }
+
+    const emergencyNameInput = document.getElementById('emergencyName');
+    const emergencyEmailInput = document.getElementById('emergencyEmail');
+    
+    // Format emergency name as pascal case (capitalize first letter of each word)
+    if (emergencyNameInput) {
+        emergencyNameInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+        
+        emergencyNameInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+    }
+    
+    // Format emergency email as lowercase
+    if (emergencyEmailInput) {
+        emergencyEmailInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase();
+        });
+        
+        emergencyEmailInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase();
+        });
+    }
+
+    // Format address as pascal case (capitalize first letter of each word)
+    const addressInput = document.getElementById('address');
+    if (addressInput) {
+        addressInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+        
+        addressInput.addEventListener('blur', function() {
+            this.value = this.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        });
+    }
+});
+
 // Payment section functionality
 function initializePaymentSection() {
     const sendPaymentRadio = document.getElementById('sendPayment');
@@ -1159,20 +1435,14 @@ function initializePaymentSection() {
     // Handle payment type change
     function handlePaymentTypeChange() {
         if (sendPaymentRadio.checked) {
-            // sendUsernameSection.style.display = 'block';
-            // receiveUsernameSection.style.display = 'none';
             sendUsernameInput.required = true;
             receiveUsernameInput.required = false;
             receiveUsernameInput.value = '';
         } else if (receivePaymentRadio.checked) {
-            // sendUsernameSection.style.display = 'none';
-            // receiveUsernameSection.style.display = 'block';
             sendUsernameInput.required = false;
             receiveUsernameInput.required = true;
             sendUsernameInput.value = '';
         } else {
-            // sendUsernameSection.style.display = 'none';
-            // receiveUsernameSection.style.display = 'none';
             sendUsernameInput.required = false;
             receiveUsernameInput.required = false;
         }
@@ -1599,6 +1869,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load prices data from JSON file
     loadPricesData();
     
+    // Load winners data from JSON file
+    loadWinnersData();
+    
     // Disable browser validation tooltips
     disableBrowserValidationTooltips();
     
@@ -1615,6 +1888,67 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', checkFormHasInput);
         input.addEventListener('change', checkFormHasInput);
     });
+    
+    // Add Hall of Fame checkbox listener to update cart when checked/unchecked
+    const hallOfFameCheckbox = document.getElementById('sedgaHallOfFame');
+    if (hallOfFameCheckbox) {
+        hallOfFameCheckbox.addEventListener('change', function() {
+            updateCartDisplay();
+        });
+    }
+    
+    // Add listeners to first name and last name fields to update cart when winner status changes
+    const firstNameField = document.getElementById('firstName');
+    const lastNameField = document.getElementById('lastName');
+    if (firstNameField) {
+        firstNameField.addEventListener('input', function() {
+            // Apply ucfirst(strtolower()) transformation
+            const value = this.value;
+            if (value) {
+                this.value = value.toLowerCase().replace(/^./, c => c.toUpperCase());
+            }
+            updateCartDisplay();
+        });
+    }
+    if (lastNameField) {
+        lastNameField.addEventListener('input', function() {
+            // Apply ucfirst(strtolower()) transformation
+            const value = this.value;
+            if (value) {
+                this.value = value.toLowerCase().replace(/^./, c => c.toUpperCase());
+            }
+            updateCartDisplay();
+        });
+    }
+    
+    // Add SEDGA Officer checkbox listener to add Awards & Luncheon and apply discount
+    const sedgaOfficerCheckbox = document.getElementById('sedgaOfficer');
+    if (sedgaOfficerCheckbox) {
+        sedgaOfficerCheckbox.addEventListener('change', function() {
+            const banquetItem = cart.find(item => item.service === 'banquet');
+            const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
+            
+            if (this.checked) {
+                // If SEDGA Officer is checked and banquet not in cart, add it
+                // But skip if Hall of Fame is selected (Hall of Fame includes Free Lunch)
+                if (!banquetItem && !isHallOfFame) {
+                    cart.push({
+                        service: 'banquet',
+                        title: 'Awards & Luncheon',
+                        price: 25.00,
+                        quantity: 1,
+                        peopleCount: 1,
+                        isSedgaOfficerItem: true  // Flag to identify this was auto-added
+                    });
+                }
+            } else {
+                // If SEDGA Officer is unchecked, remove banquet if it was added by SEDGA Officer
+                cart = cart.filter(item => !item.isSedgaOfficerItem);
+            }
+            
+            updateCartDisplay();
+        });
+    }
     
     // Clear errors when interacting with cart buttons
     const cartButtons = document.querySelectorAll('.add-to-cart, .remove-from-cart');
@@ -2115,4 +2449,3 @@ document.getElementById('registrationModal').addEventListener('hidden.bs.modal',
         resetAllModalsAndForm();
     }
 });
-
