@@ -9,11 +9,16 @@
                                             </h2>
                                             <div id="securityVerificationCollapse" class="accordion-collapse collapse" aria-labelledby="securityVerificationHeading" data-bs-parent="#registrationAccordion">
                                                 <div class="accordion-body">
-                                                    <div class="form-check">
+                                                    <div class="form-check mb-3">
                                                         <input class="form-check-input" type="checkbox" id="terms" required>
                                                         <label class="form-check-label" for="terms">
                                                             I agree to the <a href="#" class="text-primary">Terms and Conditions</a> *
                                                         </label>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label d-block mb-2">reCAPTCHA Verification *</label>
+                                                        <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" data-callback="onRecaptchaChange"></div>
+                                                        <input type="hidden" id="recaptchaToken" name="recaptchaToken" value="">
                                                     </div>
                                                 </div>
                                             </div>

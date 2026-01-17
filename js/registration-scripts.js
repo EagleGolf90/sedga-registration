@@ -748,7 +748,8 @@ function completeRegistration() {
         receivePayment: parseInt(document.getElementById('receivePayment')?.value || 0),
         receiveUsername: document.getElementById('receiveUsername')?.value || '',
         cart: cart,
-        cartTotal: cartTotal
+        cartTotal: cartTotal,
+        recaptchaToken: grecaptcha.getResponse()
     };
 
     // Send AJAX request to insert-registration.php
@@ -805,7 +806,15 @@ function completeRegistration() {
             }, 500);
         } else {
             console.error('Registration failed:', data.message);
-            alert('Error saving registration: ' + (data.message || 'Unknown error'));
+            
+            // Check if this is a reCAPTCHA verification error
+            if (data.message && data.message.includes('reCAPTCHA')) {
+                // Redirect to error page for reCAPTCHA failures
+                window.location.href = '../registration/error-recaptcha.php';
+            } else {
+                // Show error for other validation issues
+                alert('Error saving registration: ' + (data.message || 'Unknown error'));
+            }
         }
     })
     .catch(error => {
@@ -1242,20 +1251,22 @@ function generateConfirmationHTML(data) {
                                         if (isHallOfFame) {
                                             discountsHTML += `
                                                 <tr style="border-top: 1px solid #28a745;">
-                                                    <td><strong style="color: #28a745;">Hall of Fame Discount</strong><br/><small class="text-muted">Free Lunch, Free Membership</small></td>
+                                                    <td><strong style="color: #28a745;">Hall of Fame Discount</strong></td>
                                                     <td>1</td>
                                                     <td>-$45.00</td>
                                                     <td style="color: #28a745;"><strong>-$45.00</strong></td>
                                                 </tr>
+                                                <tr><td><small class="text-muted">Free Lunch, Free Membership</small></td></tr>
                                             `;
                                         } else if (isSedgaOfficer) {
                                             discountsHTML += `
                                                 <tr style="border-top: 1px solid #007bff;">
-                                                    <td><strong style="color: #007bff;">SEDGA Officer Discount</strong><br/><small class="text-muted">Free Lunch</small></td>
+                                                    <td><strong style="color: #007bff;">SEDGA Officer Discount</strong></td>
                                                     <td>1</td>
                                                     <td>-$25.00</td>
                                                     <td style="color: #007bff;"><strong>-$25.00</strong></td>
                                                 </tr>
+                                                <tr><td><small class="text-muted">Free Lunch</small></td></tr>
                                             `;
                                         }
                                         
@@ -1263,11 +1274,12 @@ function generateConfirmationHTML(data) {
                                             const discountAmount = winner.discount;
                                             discountsHTML += `
                                                 <tr style="border-top: 1px solid #20c997;">
-                                                    <td><strong style="color: #20c997;">${winner.division} Champion</strong><br/><small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small></td>
+                                                    <td><strong style="color: #20c997;">${winner.division} Champion</strong></td>
                                                     <td>1</td>
                                                     <td>-$${discountAmount.toFixed(2)}</td>
                                                     <td style="color: #20c997;"><strong>-$${discountAmount.toFixed(2)}</strong></td>
                                                 </tr>
+                                                <tr><td><small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small></td></tr>
                                             `;
                                         }
                                         

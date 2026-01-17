@@ -20,7 +20,7 @@
                                                             <label for="emergencyRelationship" class="form-label">
                                                                 <i class="fas fa-heart me-1"></i>Relationship *
                                                             </label>
-                                                            <?php include '../data/emergency-relationship-data.php'; ?>
+                                                            <?php include '../data/emergency-relationship-inc.php'; ?>
                                                         </div>
                                                     </div>
                                                     <div class="row">
@@ -34,7 +34,7 @@
                                                             <label for="emergencyPhoneType" class="form-label">
                                                                 <i class="fas fa-phone-alt me-1"></i>Phone Type *
                                                             </label>
-                                                            <?php include '../data/emergency-phoneType-data.php'; ?>
+                                                            <?php include '../data/emergency-phoneType-inc.php'; ?>
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="emergencyPhone" class="form-label">

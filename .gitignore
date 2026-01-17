@@ -5,3 +5,4 @@ logs/*.log
 node_modules/
 specs/
 instructions/
+includes/config.php
