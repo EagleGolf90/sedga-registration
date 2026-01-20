@@ -41,7 +41,7 @@
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="gender" class="form-label">Gender *</label>
-                                                            <?php include '../data/gender-inc.php'; ?>
+                                                            <?php include '../includes/gender-inc.php'; ?>
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="hole18Average" class="form-label">
@@ -51,7 +51,7 @@
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="org_id" class="form-label">Organization *</label>
-                                                            <?php include '../data/organizations-inc.php'; ?>
+                                                            <?php include '../includes/organizations-inc.php'; ?>
                                                         </div>
                                                     </div>
                                                 </div>

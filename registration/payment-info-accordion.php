@@ -18,7 +18,7 @@
                                                                 <option value="">Select Send Payment Type</option>
                                                                 <?php
                                                                 $paymentType = 'SendPayment';
-                                                                include '../data/payment-type-inc.php';
+                                                                include '../includes/payment-type-inc.php';
                                                                 ?>
                                                             </select>
                                                         </div>
@@ -38,7 +38,7 @@
                                                                 <option value="">Select Receive Payment Type</option>
                                                                 <?php
                                                                 $paymentType = 'ReceivePayment';
-                                                                include '../data/payment-type-inc.php';
+                                                                include '../includes/payment-type-inc.php';
                                                                 ?>
                                                             </select>
                                                         </div>

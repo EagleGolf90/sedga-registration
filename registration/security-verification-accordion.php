@@ -15,11 +15,6 @@
                                                             I agree to the <a href="#" class="text-primary">Terms and Conditions</a> *
                                                         </label>
                                                     </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label d-block mb-2">reCAPTCHA Verification *</label>
-                                                        <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" data-callback="onRecaptchaChange"></div>
-                                                        <input type="hidden" id="recaptchaToken" name="recaptchaToken" value="">
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

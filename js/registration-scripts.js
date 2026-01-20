@@ -41,8 +41,46 @@ async function loadWinnersData() {
     }
 }
 
-// Check if current registrant is a winner
-function getWinnerInfo(firstName, lastName) {
+// Map tournament category IDs to division names
+function mapCategoryToDivision(categoryId) {
+    const categoryDivisionMap = {
+        'open': 'Open',
+        'seniors': 'Seniors',
+        'super-seniors': 'Super Seniors',
+        'women': 'Women'
+    };
+    return categoryDivisionMap[categoryId] || null;
+}
+
+// Get the selected tournament category (division) from cart
+function getSelectedDivision() {
+    const selectedCategory = cart.find(item => tournamentCategories.includes(item.service));
+    if (selectedCategory) {
+        return mapCategoryToDivision(selectedCategory.service);
+    }
+    return null;
+}
+
+// Check if current registrant is a winner with matching division
+function getWinnerInfo(firstName, lastName, division = null) {
+    if (!firstName || !lastName) {
+        return null;
+    }
+    
+    const firstNameLower = firstName.trim().toLowerCase();
+    const lastNameLower = lastName.trim().toLowerCase();
+    
+    const winner = winnersData.find(w => 
+        w.firstName.toLowerCase() === firstNameLower && 
+        w.lastName.toLowerCase() === lastNameLower &&
+        (!division || w.division === division) // Check division if provided
+    );
+    
+    return winner || null;
+}
+
+// Check if user is a winner in ANY division (without division filter)
+function getWinnerInfoAnyDivision(firstName, lastName) {
     if (!firstName || !lastName) {
         return null;
     }
@@ -56,6 +94,143 @@ function getWinnerInfo(firstName, lastName) {
     );
     
     return winner || null;
+}
+
+// Update cart total in both header and summary section to ensure consistency
+function updateCartTotal(totalAmount) {
+    const formattedTotal = `$${totalAmount.toFixed(2)}`;
+    document.getElementById('total').textContent = formattedTotal;
+    document.getElementById('headerTotal').textContent = formattedTotal;
+}
+
+// Check if first name matches last name for discount
+function checkMatchedNameDiscount(firstName, lastName) {
+    if (!firstName || !lastName) {
+        return false;
+    }
+    
+    const firstNameLower = firstName.trim().toLowerCase();
+    const lastNameLower = lastName.trim().toLowerCase();
+    
+    // Check if the first name is contained in the last name (e.g., John Johnson)
+    return firstNameLower === lastNameLower;
+}
+
+// Apply matched name discount to cart
+function applyMatchedNameDiscount() {
+    const firstName = (document.getElementById('firstName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+    const lastName = (document.getElementById('lastName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+    
+    // Check if matched name discount should be applied
+    const hasMatchedNames = checkMatchedNameDiscount(firstName, lastName);
+    const hasMatchedNameDiscount = cart.some(item => item.service === 'matched-name-discount');
+    
+    if (hasMatchedNames && !hasMatchedNameDiscount) {
+        // Add matched name discount to cart
+        cart.push({
+            service: 'matched-name-discount',
+            title: 'Matched Name Discount',
+            price: -10.00, // $10 discount for matched first and last names
+            quantity: 1,
+            isMatchedNameDiscount: true
+        });
+        console.log('Matched name discount added to cart:', firstName, lastName);
+    } else if (!hasMatchedNames && hasMatchedNameDiscount) {
+        // Remove matched name discount if names no longer match
+        cart = cart.filter(item => item.service !== 'matched-name-discount');
+        console.log('Matched name discount removed from cart');
+    }
+}
+
+// Automatically add winner items to cart if user is a winner
+function autoAddWinnerToCart() {
+    const firstName = (document.getElementById('firstName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+    const lastName = (document.getElementById('lastName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
+    const division = getSelectedDivision();
+    
+    if (!division) {
+        // No tournament category selected yet, cannot check for winner
+        return;
+    }
+    
+    // First check if this person is a winner in ANY division
+    const winnerAnyDivision = getWinnerInfoAnyDivision(firstName, lastName);
+    
+    // Then check if they're a winner in the SELECTED division
+    const winner = getWinnerInfo(firstName, lastName, division);
+    
+    // Check if there's already a winner discount in cart
+    const existingWinnerDiscount = cart.find(item => item.isWinnerDiscount);
+    
+    // If they're a winner in the selected division
+    if (winner) {
+        // Check if winner discount is already in cart
+        const hasWinnerDiscount = cart.some(item => item.service === 'winner-discount');
+        
+        if (!hasWinnerDiscount) {
+            // Add winner discount item to cart
+            cart.push({
+                service: 'winner-discount',
+                title: `${winner.division} Champion`,
+                price: winner.discount,
+                quantity: 1,
+                isWinnerDiscount: true,
+                winnerInfo: winner
+            });
+            
+            console.log('Winner detected and added to cart:', winner);
+            updateCartDisplay();
+        }
+    } else if (winnerAnyDivision && !winner) {
+        // They're a winner but not in the selected division
+        // Check if there's an existing winner discount for a different division
+        if (existingWinnerDiscount && existingWinnerDiscount.winnerInfo.division !== division) {
+            // This shouldn't happen anymore since division changes are now blocked
+            // But keep this as a safety net
+            console.warn('Winner mismatch detected - division change should have been blocked');
+        }
+    } else if (!winner && existingWinnerDiscount) {
+        // No winner match but there's a winner discount in cart
+        // This could happen if user changed their name
+        // Remove the winner discount in this case
+        cart = cart.filter(item => !item.isWinnerDiscount);
+        console.log('Winner discount removed due to name change');
+        updateCartDisplay();
+    }
+}
+
+// Remove cart items if the division doesn't match the selected division
+function validateCartItemsByDivision() {
+    const firstName = document.getElementById('firstName')?.value?.trim() || '';
+    const lastName = document.getElementById('lastName')?.value?.trim() || '';
+    const selectedDivision = getSelectedDivision();
+    
+    // Only proceed if both first name and last name are provided and division is selected
+    if (!firstName || !lastName && !selectedDivision) {
+        return;
+    }
+    
+    console.log(`Validating cart items for ${firstName} ${lastName} in ${selectedDivision} division`);
+    
+    // Check if the person has a winner discount that doesn't match the division
+    let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+    if (winnerDiscountItem && winnerDiscountItem.winnerInfo.division !== selectedDivision) {
+        // Remove items that don't match the selected division
+        const itemsRemoved = [];
+        cart = cart.filter(item => {
+            if (item.isWinnerDiscount) {
+                itemsRemoved.push(`${item.winnerInfo.division} Champion discount`);
+                return false; // Remove winner discount for non-matching division
+            }
+            return true; // Keep all other items
+        });
+        
+        if (itemsRemoved.length > 0) {
+            console.log('Removed items due to division mismatch:', itemsRemoved);
+            console.log('Remaining cart:', cart);
+            updateCartDisplay();
+        }
+    }
 }
 
 // Update prices in the DOM from pricesData
@@ -397,7 +572,24 @@ document.querySelectorAll('.add-to-cart').forEach(button => {
         
         // Check if this is a tournament category
         if (tournamentCategories.includes(serviceName)) {
-            // Remove any existing tournament category from cart
+            // Check if there's a winner discount in the cart from a different division
+            let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+            if (winnerDiscountItem) {
+                // Get the division of the winner discount
+                const winnerDivision = winnerDiscountItem.winnerInfo.division;
+                const selectedDivision = mapCategoryToDivision(serviceName);
+                
+                // If the divisions don't match, prevent the change
+                if (winnerDivision !== selectedDivision) {
+                    const errorMessage = `⚠️ CANNOT CHANGE DIVISION!\n\nYou have a ${winnerDivision} Champion prize (${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}) in your cart.\n\nYou must remove the winner discount item from your cart before you can select a different division.`;
+                    alert(errorMessage);
+                    console.warn('Division change blocked due to mismatched winner discount');
+                    return; // Prevent the division change
+                }
+            }
+            
+            // If no winner discount conflict, proceed with division change
+            // Remove any existing tournament category from cart (but keep winner discount if it matches)
             cart = cart.filter(item => !tournamentCategories.includes(item.service));
             
             // Reset all tournament category buttons
@@ -425,6 +617,12 @@ document.querySelectorAll('.add-to-cart').forEach(button => {
             
             // Clear errors since a tournament category is now selected
             clearErrorOnInteraction();
+            
+            // Check if this user is a winner and auto-add to cart
+            autoAddWinnerToCart();
+            
+            // Validate cart items against the newly selected division
+            validateCartItemsByDivision();
         } else {
             // For non-tournament categories (optional services)
             const existingItem = cart.find(item => item.service === serviceName);
@@ -469,8 +667,18 @@ function updateCartDisplay() {
     const cartCount = document.getElementById('cartCount');
     const cartSummary = document.querySelector('.cart-summary');
     
-    // Update cart count
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    // Update cart count - count actual items (not discounts)
+    const totalItems = cart.reduce((sum, item) => {
+        // Skip discount-only items
+        if (item.isWinnerDiscount || item.isSedgaOfficerItem || item.isMatchedNameDiscount) {
+            return sum;
+        }
+        // For banquet, count people; for others count quantity
+        if (item.service === 'banquet' && item.peopleCount) {
+            return sum + item.peopleCount;
+        }
+        return sum + item.quantity;
+    }, 0);
     cartCount.textContent = totalItems;
     
     if (cart.length === 0) {
@@ -481,10 +689,15 @@ function updateCartDisplay() {
                 <small>Add services to get started</small>
             </div>
         `;
-        document.getElementById('headerTotal').textContent = '$0.00';
+        updateCartTotal(0);
         cartSummary.style.display = 'none';
     } else {
         let cartItemsHtml = cart.map(item => {
+            // Skip winner discount and matched name discount items in the normal cart display (will be shown separately)
+            if (item.isWinnerDiscount || item.isMatchedNameDiscount) {
+                return '';
+            }
+            
             const totalPrice = item.service === 'banquet' && item.peopleCount ? 
                 (item.price * item.peopleCount).toFixed(2) : 
                 (item.price * item.quantity).toFixed(2);
@@ -553,22 +766,31 @@ function updateCartDisplay() {
                 </div>`;
         }
         
-        // Add champion discount if applicable (1 or 3 round(s) = $75 or $225 discount)
-        const firstName = (document.getElementById('firstName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
-        const lastName = (document.getElementById('lastName')?.value?.trim() || '').toLowerCase().replace(/^./, c => c.toUpperCase());
-        
-        // Check if current registrant is a winner
-        const winner = getWinnerInfo(firstName, lastName);
-        if (winner && cart.length > 0) {
-            const discountAmount = winner.discount;
+        // Add winner discount if applicable (auto-added to cart as a special item)
+        let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+        if (winnerDiscountItem) {
+            const discountAmount = Math.abs(winnerDiscountItem.price).toFixed(2);
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <strong>${winner.division} Champion</strong><br/>
-                            <small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small>
+                            <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong><br/>
+                            <small class="text-muted">${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}</small>
                         </div>
-                        <span class="fw-bold text-success">-$${discountAmount.toFixed(2)}</span>
+                        <span class="fw-bold text-success">-$${discountAmount}</span>
+                    </div>
+                </div>`;
+        }
+        
+        // Add matched name discount if applicable
+        let matchedNameDiscountItem = cart.find(item => item.isMatchedNameDiscount);
+        if (matchedNameDiscountItem) {
+            const discountAmount = Math.abs(matchedNameDiscountItem.price).toFixed(2);
+            cartItemsHtml += `
+                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #ffc107;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-truncate me-2"><strong>Matched Name Discount</strong><br/><small class="text-muted">First and Last Name Match</small></span>
+                        <span class="fw-bold text-warning">-$${discountAmount}</span>
                     </div>
                 </div>`;
         }
@@ -579,7 +801,21 @@ function updateCartDisplay() {
         document.querySelectorAll('.remove-item').forEach(button => {
             button.addEventListener('click', function() {
                 const serviceName = this.dataset.service;
+                
+                // Check if the removed item is a tournament category (division)
+                const isTournamentCategory = tournamentCategories.includes(serviceName);
+                
+                // Remove the item from cart
                 cart = cart.filter(item => item.service !== serviceName);
+                
+                // If a division was removed and there's still a winner discount, remove it too
+                if (isTournamentCategory) {
+                    const winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+                    if (winnerDiscountItem) {
+                        cart = cart.filter(item => !item.isWinnerDiscount);
+                        console.log('Winner discount removed because division was deleted from cart');
+                    }
+                }
                 
                 // Reset button state for removed item
                 const serviceButton = document.querySelector(`[data-service="${serviceName}"] .add-to-cart`);
@@ -631,37 +867,56 @@ function updateCartDisplay() {
             });
         });
         
-        // Calculate totals - account for people count in banquet items
-        let total = cart.reduce((sum, item) => {
-            if (item.service === 'banquet' && item.peopleCount) {
-                return sum + (item.price * item.peopleCount);
-            }
-            return sum + (item.price * item.quantity);
-        }, 0);
+        // Calculate totals - properly handle all discount types
+        let total = 0;
         
-        // Apply Hall of Fame discount ($45 free member discount and free lunch)
+        // Add up all non-discount items (regular services and tournament categories)
+        cart.forEach(item => {
+            // Skip discount items in initial calculation
+            if (item.isWinnerDiscount || item.isSedgaOfficerItem || item.isMatchedNameDiscount || item.isHallOfFameItem) {
+                return;
+            }
+            
+            if (item.service === 'banquet' && item.peopleCount) {
+                // Banquet uses peopleCount for quantity (not item.quantity)
+                total += (item.price * item.peopleCount);
+            } else {
+                // Regular items - use quantity field
+                total += (item.price * (item.quantity || 1));
+            }
+        });
+        
+        // Apply winner discount if present (winner discount has negative price)
+        winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+        if (winnerDiscountItem) {
+            total += winnerDiscountItem.price; // This is negative, so it subtracts
+        }
+        
+        // Apply matched name discount if present (matched name discount has negative price)
+        matchedNameDiscountItem = cart.find(item => item.isMatchedNameDiscount);
+        if (matchedNameDiscountItem) {
+            total += (matchedNameDiscountItem.price); // This is negative, so it subtracts
+        }
+        
+        // Apply Hall of Fame discount ($45 off) - includes free lunch and free membership
         if (isHallOfFame && total > 0) {
             total -= 45;
             total = Math.max(0, total); // Ensure total doesn't go below zero
         }
         
-        // Apply SEDGA Officer discount ($25 off) - only if Hall of Fame is NOT selected
+        // Apply SEDGA Officer discount ($25 off for free lunch) - only if Hall of Fame is NOT selected
         if (isSedgaOfficer && !isHallOfFame && total > 0) {
             total -= 25;
             total = Math.max(0, total); // Ensure total doesn't go below zero
         }
         
-        // Apply winner discount (if winner is found)
-        if (winner && total > 0) {
-            total -= winner.discount;
-            total = Math.max(0, total); // Ensure total doesn't go below zero
-        }
+        // Ensure total is never negative and is properly formatted
+        total = Math.max(0, total);
         
         // Store the calculated total in the global cartTotal variable
         cartTotal = total;
         
-        document.getElementById('total').textContent = `$${total.toFixed(2)}`;
-        document.getElementById('headerTotal').textContent = `$${total.toFixed(2)}`;
+        updateCartTotal(total);
         
         cartSummary.style.display = 'block';
     }
@@ -717,6 +972,51 @@ function updateCartDisplay() {
     }
 }
 
+// Build cart data with proper structure and include all discounts for submission
+function buildCartForSubmission() {
+    const cartItems = [];
+    
+    // Add all cart items with proper field names (name instead of title, service -> type)
+    cart.forEach(item => {
+        // Skip displaying winner discount separately in items (it's a special item)
+        // Include it but mark it specially
+        cartItems.push({
+            name: item.title,
+            type: item.service,
+            price: item.price,
+            quantity: item.service === 'banquet' && item.peopleCount ? item.peopleCount : item.quantity,
+            isDiscount: item.isWinnerDiscount ? true : false,
+            originalQuantity: item.quantity
+        });
+    });
+    
+    // Add Hall of Fame discount as a separate line item if applicable
+    const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
+    if (isHallOfFame && cart.length > 0) {
+        cartItems.push({
+            name: 'Hall of Fame Discount',
+            type: 'hall-of-fame-discount',
+            price: -45.00,
+            quantity: 1,
+            isDiscount: true
+        });
+    }
+    
+    // Add SEDGA Officer discount if applicable (only if Hall of Fame is NOT selected)
+    const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
+    if (isSedgaOfficer && !isHallOfFame && cart.length > 0) {
+        cartItems.push({
+            name: 'SEDGA Officer Discount',
+            type: 'sedga-officer-discount',
+            price: -25.00,
+            quantity: 1,
+            isDiscount: true
+        });
+    }
+    
+    return cartItems;
+}
+
 // Complete registration function
 function completeRegistration() {
     // Get form data
@@ -747,7 +1047,7 @@ function completeRegistration() {
         sendUsername: document.getElementById('sendUsername')?.value || '',
         receivePayment: parseInt(document.getElementById('receivePayment')?.value || 0),
         receiveUsername: document.getElementById('receiveUsername')?.value || '',
-        cart: cart,
+        cart: buildCartForSubmission(),
         cartTotal: cartTotal,
         recaptchaToken: grecaptcha.getResponse()
     };
@@ -1219,6 +1519,10 @@ function generateConfirmationHTML(data) {
                                 </thead>
                                 <tbody>
                                     ${cart.map(item => {
+                                        // Skip discount items here (will be shown in discounts section)
+                                        if (item.isWinnerDiscount || item.isMatchedNameDiscount) {
+                                            return '';
+                                        }
                                         if (item.service === 'banquet' && item.peopleCount) {
                                             return `
                                                 <tr>
@@ -1244,9 +1548,6 @@ function generateConfirmationHTML(data) {
                                         let discountsHTML = '';
                                         const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
                                         const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
-                                        const firstName = document.getElementById('firstName')?.value?.trim() || '';
-                                        const lastName = document.getElementById('lastName')?.value?.trim() || '';
-                                        const winner = getWinnerInfo(firstName, lastName);
                                         
                                         if (isHallOfFame) {
                                             discountsHTML += `
@@ -1270,16 +1571,33 @@ function generateConfirmationHTML(data) {
                                             `;
                                         }
                                         
-                                        if (winner) {
-                                            const discountAmount = winner.discount;
+                                        // Get winner discount from cart items
+                                        const winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
+                                        if (winnerDiscountItem) {
+                                            const discountAmount = Math.abs(winnerDiscountItem.price).toFixed(2);
                                             discountsHTML += `
                                                 <tr style="border-top: 1px solid #20c997;">
-                                                    <td><strong style="color: #20c997;">${winner.division} Champion</strong></td>
+                                                    <td><strong style="color: #20c997;">${winnerDiscountItem.winnerInfo.division} Champion</strong></td>
                                                     <td>1</td>
-                                                    <td>-$${discountAmount.toFixed(2)}</td>
-                                                    <td style="color: #20c997;"><strong>-$${discountAmount.toFixed(2)}</strong></td>
+                                                    <td>-$${discountAmount}</td>
+                                                    <td style="color: #20c997;"><strong>-$${discountAmount}</strong></td>
                                                 </tr>
-                                                <tr><td><small class="text-muted">${winner.rounds} Free Round${winner.rounds > 1 ? 's' : ''}</small></td></tr>
+                                                <tr><td><small class="text-muted">${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}</small></td></tr>
+                                            `;
+                                        }
+                                        
+                                        // Get matched name discount from cart items
+                                        const matchedNameDiscountItem = cart.find(item => item.isMatchedNameDiscount);
+                                        if (matchedNameDiscountItem) {
+                                            const discountAmount = Math.abs(matchedNameDiscountItem.price).toFixed(2);
+                                            discountsHTML += `
+                                                <tr style="border-top: 1px solid #ffc107;">
+                                                    <td><strong style="color: #ffc107;">Matched Name Discount</strong></td>
+                                                    <td>1</td>
+                                                    <td>-$${discountAmount}</td>
+                                                    <td style="color: #ffc107;"><strong>-$${discountAmount}</strong></td>
+                                                </tr>
+                                                <tr><td><small class="text-muted">First and Last Name Match</small></td></tr>
                                             `;
                                         }
                                         
@@ -1919,6 +2237,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (value) {
                 this.value = value.toLowerCase().replace(/^./, c => c.toUpperCase());
             }
+            // Check for matched name discount
+            applyMatchedNameDiscount();
+            // Validate cart items against selected division
+            validateCartItemsByDivision();
             updateCartDisplay();
         });
     }
@@ -1929,6 +2251,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (value) {
                 this.value = value.toLowerCase().replace(/^./, c => c.toUpperCase());
             }
+            // Check for matched name discount
+            applyMatchedNameDiscount();
+            // Validate cart items against selected division
+            validateCartItemsByDivision();
             updateCartDisplay();
         });
     }

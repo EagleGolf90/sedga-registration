@@ -35,7 +35,7 @@
                                                             <label for="phoneType" class="form-label">
                                                                 <i class="fas fa-phone-alt me-1"></i>Phone Type *
                                                             </label>
-                                                            <?php include '../data/phoneType-inc.php'; ?>
+                                                            <?php include '../includes/phoneType-inc.php'; ?>
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="phone" class="form-label">
@@ -57,7 +57,7 @@
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="state" class="form-label">State *</label>
-                                                            <?php include '../data/states-inc.php'; ?>
+                                                            <?php include '../includes/states-inc.php'; ?>
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="zipCode" class="form-label">Zip Code *</label>
@@ -65,7 +65,7 @@
                                                         </div>
                                                         <div class="col-md-3 mb-3">
                                                             <label for="country" class="form-label">Country *</label>
-                                                            <?php include '../data/countries-inc.php'; ?>
+                                                            <?php include '../includes/countries-inc.php'; ?>
                                                         </div>
                                                     </div>
                                                 </div>

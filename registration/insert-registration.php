@@ -193,12 +193,13 @@ try {
             throw new Exception("Execute failed: " . $stmt->error);
         }
         
-        // $registrationId = $conn->insert_id;
+        // Get the last inserted registration ID
+        $registrationId = $conn->insert_id;
         $stmt->close();
         
         // Insert cart items if any
         if (!empty($cartData)) {
-            $cartSql = "INSERT INTO registration_items (registration_id, item_name, item_price, quantity) VALUES (?, ?, ?, ?)";
+            $cartSql = "INSERT INTO registration_items (registration_id, item_name, item_type, item_price, quantity, is_discount) VALUES (?, ?, ?, ?, ?, ?)";
             $cartStmt = $conn->prepare($cartSql);
             
             if (!$cartStmt) {
@@ -207,10 +208,12 @@ try {
             
             foreach ($cartData as $item) {
                 $itemName = isset($item['name']) ? $item['name'] : '';
+                $itemType = isset($item['type']) ? $item['type'] : '';
                 $itemPrice = isset($item['price']) ? (float)$item['price'] : 0.00;
                 $itemQuantity = isset($item['quantity']) ? (int)$item['quantity'] : 1;
+                $isDiscount = isset($item['isDiscount']) ? (int)$item['isDiscount'] : 0;
                 
-                $cartStmt->bind_param("isdi", $registrationId, $itemName, $itemPrice, $itemQuantity);
+                $cartStmt->bind_param("issdii", $registrationId, $itemName, $itemType, $itemPrice, $itemQuantity, $isDiscount);
                 
                 if (!$cartStmt->execute()) {
                     throw new Exception("Cart insert failed: " . $cartStmt->error);

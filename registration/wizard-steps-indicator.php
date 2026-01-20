@@ -1,5 +1,5 @@
             <!-- Wizard Steps Indicator -->
-            <div class="modal-header bg-light border-bottom">
+            <div class="modal-header wizard-header-100 bg-light border-bottom">
                 <div class="wizard-steps w-100">
                     <div class="step active" id="step1">
                         <div class="step-number">1</div>
