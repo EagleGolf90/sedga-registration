@@ -268,6 +268,9 @@ let cartTotal = 0;
 let isCompletingRegistration = false;
 let isEditingDetails = false;
 
+// Track last focused element before opening modals
+let lastFocusedElement = null;
+
 // Form data storage for edit functionality
 let storedFormData = null;
 
@@ -276,6 +279,7 @@ let hasFormInput = false;
 
 // reCAPTCHA verification functionality
 function verifyRecaptchaAndOpenModal() {
+    lastFocusedElement = document.activeElement;
     const recaptchaResponse = grecaptcha.getResponse();
     const errorDiv = document.getElementById('recaptchaError');
     
@@ -307,6 +311,7 @@ function verifyRecaptchaAndOpenModal() {
 
 // Simplified function without reCAPTCHA verification
 function openRegistrationModal() {
+    lastFocusedElement = document.activeElement;
     const registrationModal = document.getElementById('registrationModal');
     if (registrationModal) {
         const modal = new bootstrap.Modal(registrationModal);
@@ -331,6 +336,31 @@ function openRegistrationModal() {
     }
     
     return false;
+}
+
+function focusFallbackElement() {
+    const startRegistrationBtn = document.getElementById('startRegistrationBtn');
+    if (startRegistrationBtn) {
+        startRegistrationBtn.focus();
+        return;
+    }
+
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+}
+
+function moveFocusOutOfModal(modalElement) {
+    if (!modalElement) return;
+
+    const activeElement = document.activeElement;
+    if (activeElement && modalElement.contains(activeElement)) {
+        if (lastFocusedElement && document.body.contains(lastFocusedElement)) {
+            lastFocusedElement.focus();
+        } else {
+            focusFallbackElement();
+        }
+    }
 }
 
 // Email verification functionality (simplified)
@@ -748,7 +778,7 @@ function updateCartDisplay() {
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #28a745;">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-truncate me-2"><strong>Hall of Fame Discount</strong><br/>Free Lunch<br/>Free Membership</span>
+                        <span class="text-truncate me-2"><strong>Hall of Fame Discount</strong></span>
                         <span class="fw-bold text-success">-$45.00</span>
                     </div>
                 </div>`;
@@ -760,7 +790,7 @@ function updateCartDisplay() {
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #007bff;">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-truncate me-2"><strong>SEDGA Officer Discount</strong><br/>Free Lunch</span>
+                        <span class="text-truncate me-2"><strong>SEDGA Officer Discount</strong></span>
                         <span class="fw-bold text-info">-$25.00</span>
                     </div>
                 </div>`;
@@ -770,12 +800,21 @@ function updateCartDisplay() {
         let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
         if (winnerDiscountItem) {
             const discountAmount = Math.abs(winnerDiscountItem.price).toFixed(2);
+            // cartItemsHtml += `
+            //     <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
+            //         <div class="d-flex justify-content-between align-items-center">
+            //             <div class="flex-grow-1">
+            //                 <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong><br/>
+            //                 <small class="text-muted">${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}</small>
+            //             </div>
+            //             <span class="fw-bold text-success">-$${discountAmount}</span>
+            //         </div>
+            //     </div>`;
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong><br/>
-                            <small class="text-muted">${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}</small>
+                            <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong>
                         </div>
                         <span class="fw-bold text-success">-$${discountAmount}</span>
                     </div>
@@ -1060,7 +1099,14 @@ function completeRegistration() {
         },
         body: JSON.stringify(formData)
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check if response is valid JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             console.log('Registration saved successfully:', data);
@@ -2758,6 +2804,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     isCompletingRegistration = false;
                 }, 2000);
             }, 800);
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const registrationModalElement = document.getElementById('registrationModal');
+    if (registrationModalElement) {
+        registrationModalElement.addEventListener('hide.bs.modal', function() {
+            moveFocusOutOfModal(registrationModalElement);
+        });
+    }
+
+    const confirmationModalElement = document.getElementById('confirmationModal');
+    if (confirmationModalElement) {
+        confirmationModalElement.addEventListener('hide.bs.modal', function() {
+            moveFocusOutOfModal(confirmationModalElement);
+        });
+    }
+
+    const successModalElement = document.getElementById('successModal');
+    if (successModalElement) {
+        successModalElement.addEventListener('hide.bs.modal', function() {
+            moveFocusOutOfModal(successModalElement);
         });
     }
 });

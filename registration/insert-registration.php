@@ -5,27 +5,55 @@
  * Customize the database connection and table structure as needed
  */
 
-// Enable error reporting for debugging
+// Enable error reporting for debugging but don't display errors
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+
+// Set custom error handler
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
+    return true;
+});
+
+// Set shutdown function to catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR)) {
+        $buffered = ob_get_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Fatal PHP error: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line'],
+            'debug' => $buffered
+        ]);
+    }
+});
+
+// Start output buffering to prevent accidental output before JSON response
+ob_start();
 
 // Set headers for JSON response
 header('Content-Type: application/json');
 
-include '../includes/config.php';
+// include 'verify-recaptcha.php';
 
 try {
-    // Create connection using mysqli
-    $conn = new mysqli($db_host, $db_username, $db_password, $db_name);
-    
-    // Check connection
-    if ($conn->connect_error) {
-        throw new Exception("Connection failed: " . $conn->connect_error);
-    }
-    
+    include '../preload.php';
+} catch (Exception $e) {
+    ob_clean();
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Failed to load preload.php: ' . $e->getMessage()
+    ]);
+    exit;
+}
+
+try {
     // Check if request method is POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(400);
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Invalid request method. POST required.'
@@ -36,22 +64,86 @@ try {
     // Get JSON input
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
-    
+
     if (!$data) {
         http_response_code(400);
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Invalid JSON data received.'
         ]);
         exit;
     }
-    
-    include '../includes/functions-inc.php';
-    $generator = new RegistrationHandler();
+
+    try {
+        $sqlTable = new SQLTable();
+    } catch (Exception $e) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to initialize database: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    try {
+        $rows = $sqlTable->load('generateRegistration', array(BUS_UNIT));
+    } catch (Exception $e) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to load registration data: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    $id = 1;
+    foreach ($rows as $row) {
+        $id += $row['UniqueID'];
+    }
+
+    try {
+        $ret = $sqlTable->execute('updateRegistration', array(BUS_UNIT, $id));
+    } catch (Exception $e) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to update registration ID: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    try {
+        include '../includes/generator.php';
+        include '../includes/functions-inc.php';
+    } catch (Exception $e) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to load functions: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    try {
+        $generator = new RegistrationGenerator($sqlTable);
+    } catch (Exception $e) {
+        ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to initialize generator: ' . $e->getMessage()
+        ]);
+        exit;
+    }
 
     // Prepare variables from form data
     $secureId = $generator->generateSecureID();
-    $registrationId = '';
+    $registrationId = $id;
 
     // Personal Information
     $firstName = isset($data['firstName']) ? ucfirst(strtolower(trim($data['firstName']))) : '';
@@ -103,52 +195,10 @@ try {
         }
     }
     
-    // Validate reCAPTCHA
-    if (empty($recaptchaToken)) {
-        $errors[] = "reCAPTCHA verification is required.";
-    } else {
-        // Verify reCAPTCHA token with Google
-        $recaptchaSecretKey = '6LcO9vErAAAAACrXaBNfrSQmeR8A3sw62g1rzxr-'; // Replace with your secret key
-        $verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-        
-        $postData = http_build_query([
-            'secret' => $recaptchaSecretKey,
-            'response' => $recaptchaToken
-        ]);
-        
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => 'Content-type: application/x-www-form-urlencoded',
-                'content' => $postData
-            ]
-        ]);
-        
-        $response = @file_get_contents($verifyUrl, false, $context);
-        $responseData = json_decode($response, true);
-        
-        // Check if verification was successful
-        if (!$responseData || !isset($responseData['success']) || !$responseData['success']) {
-            $errors[] = "reCAPTCHA verification failed. Please try again.";
-        } elseif (isset($responseData['score']) && $responseData['score'] < 0.5) {
-            // If using reCAPTCHA v3, check score (0.0 is most likely a bot, 1.0 is most likely human)
-            $errors[] = "Your request could not be verified. Please try again.";
-        }
-    }
-    
-    if (!empty($errors)) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Validation errors',
-            'errors' => $errors
-        ]);
-        exit;
-    }
-    
     // Validate email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Invalid email format.'
@@ -157,29 +207,12 @@ try {
     }
     
     // Start transaction
-    $conn->begin_transaction();
+    // $conn->begin_transaction();
 
     try {
         // Insert into registrations table
-        // CUSTOMIZE TABLE NAME AND COLUMNS BASED ON YOUR DATABASE SCHEMA
-        $sql = "INSERT INTO registrations (
-                    secure_id, registration_id, first_name, last_name, email, phone_type, phone,
-                    address, city, state, zip_code, country,
-                    age, gender, hole_18_average, org_id, sedga_officer, sedga_hall_of_fame, ghin_number,
-                    emergency_name, emergency_relationship, emergency_email, emergency_phone_type, emergency_phone,
-                    send_payment, send_username, receive_payment, receive_username,
-                    total_amount, remote_addr, http_user_agent, registration_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), '')";
-        
-        $stmt = $conn->prepare($sql);
-        
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
-        
         // Bind parameters
-        $stmt->bind_param(
-            "sssiisssssiiiiiissiiiiii",
+        $parm = array(
             $secureId, $registrationId, $firstName, $lastName, $email, $phoneType, $phone,
             $address, $city, $state, $zipCode, $country,
             $age, $gender, $hole18Average, $org_id, $sedgaOfficer, $sedgaHallOfFame, $ghinNumber,
@@ -187,71 +220,65 @@ try {
             $sendPayment, $sendUsername, $receivePayment, $receiveUsername,
             $cartTotal, $_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_USER_AGENT']
         );
+
+        // // Execute statement
+        $ret = $sqlTable->execute('insertRegistration', $parm);
         
-        // Execute statement
-        if (!$stmt->execute()) {
-            throw new Exception("Execute failed: " . $stmt->error);
+        if ($ret != 1) {
+            throw new Exception("Failed to insert registration: Return code " . $ret);
         }
-        
-        // Get the last inserted registration ID
-        $registrationId = $conn->insert_id;
-        $stmt->close();
         
         // Insert cart items if any
         if (!empty($cartData)) {
-            $cartSql = "INSERT INTO registration_items (registration_id, item_name, item_type, item_price, quantity, is_discount) VALUES (?, ?, ?, ?, ?, ?)";
-            $cartStmt = $conn->prepare($cartSql);
-            
-            if (!$cartStmt) {
-                throw new Exception("Cart prepare failed: " . $conn->error);
-            }
-            
             foreach ($cartData as $item) {
                 $itemName = isset($item['name']) ? $item['name'] : '';
-                $itemType = isset($item['type']) ? $item['type'] : '';
                 $itemPrice = isset($item['price']) ? (float)$item['price'] : 0.00;
                 $itemQuantity = isset($item['quantity']) ? (int)$item['quantity'] : 1;
-                $isDiscount = isset($item['isDiscount']) ? (int)$item['isDiscount'] : 0;
                 
-                $cartStmt->bind_param("issdii", $registrationId, $itemName, $itemType, $itemPrice, $itemQuantity, $isDiscount);
+                $parm = array($registrationId, $itemName, $itemPrice, $itemQuantity);
+                $ret = $sqlTable->execute('insertRegistrationItems', $parm);
                 
-                if (!$cartStmt->execute()) {
+                if ($ret != 1) {
                     throw new Exception("Cart insert failed: " . $cartStmt->error);
                 }
             }
-            
-            $cartStmt->close();
         }
         
         // Commit transaction
-        $conn->commit();
+        // $conn->commit();
         
         // Success response
         http_response_code(201);
+        ob_clean();
         echo json_encode([
             'success' => true,
             'message' => 'Registration saved successfully.',
             'registrationId' => $registrationId
         ]);
+        exit;
         
     } catch (Exception $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        // $conn->rollback();
         
         http_response_code(500);
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Error saving registration: ' . $e->getMessage()
         ]);
     }
+    exit;
     
-    $conn->close();
+    // $conn->close();
     
 } catch (Exception $e) {
     http_response_code(500);
+    ob_clean();
     echo json_encode([
         'success' => false,
         'message' => 'Database error: ' . $e->getMessage()
     ]);
+    exit;
 }
 ?>

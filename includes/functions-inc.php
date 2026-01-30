@@ -1,11 +1,11 @@
 <?php
-class RegistrationHandler {
+class RegistrationGenerator {
   private $sqlTable;
   private $generator;
 
   public function __construct($sqlTable) {
     $this->sqlTable = $sqlTable;
-    $this->generator = new KDGAGenerator();
+    $this->generator = new IDGenerator($sqlTable);
   }
 
   public function generateSecureID() {

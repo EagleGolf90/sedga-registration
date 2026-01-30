@@ -4,8 +4,9 @@
  * Included at the top of every page
  */
 ?>
-<!DOCTYPE html>
-<html lang="en">
+<!-- <!DOCTYPE html> -->
+<!-- <html lang="en"> -->
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="../css/registration-style.css" rel="stylesheet">
     <!-- reCAPTCHA commented out to save -->
-    <!-- <script>
+    <script>
         // Define reCAPTCHA callback early so it's available when the API loads
         function onRecaptchaChange() {
             const recaptchaResponse = grecaptcha.getResponse();
@@ -31,7 +32,7 @@
             }
         }
     </script>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script> -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <script src="../js/registration-scripts.js" defer></script>
  </head>
 <body>
