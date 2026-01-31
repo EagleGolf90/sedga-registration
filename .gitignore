@@ -11,3 +11,4 @@ js/demo.php
 js/registration-scripts_demo.js
 registration/index-demo.php
 registration/test*
+registration/verify-recaptcha.php
