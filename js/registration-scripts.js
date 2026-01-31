@@ -1099,13 +1099,20 @@ function completeRegistration() {
         },
         body: JSON.stringify(formData)
     })
-    .then(response => {
-        // Check if response is valid JSON before parsing
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`);
+    .then(async response => {
+        const contentType = response.headers.get('content-type') || '';
+        const responseText = await response.text();
+
+        if (!responseText) {
+            throw new Error(`Server returned empty response (${response.status})`);
         }
-        return response.json();
+
+        try {
+            return JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Non-JSON response body:', responseText);
+            throw new Error(`Server returned ${contentType || 'unknown content type'} (${response.status})`);
+        }
     })
     .then(data => {
         if (data.success) {

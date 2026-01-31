@@ -6,3 +6,12 @@ node_modules/
 specs/
 instructions/
 includes/config.php
+html/header-demo.php
+js/demo.php
+js/registration-scripts_demo.js
+registration/index-demo.php
+registration/test.php
+registration/test2.php
+package*
+registration.html
+preload.php
