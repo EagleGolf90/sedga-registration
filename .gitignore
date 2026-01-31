@@ -8,5 +8,6 @@ instructions/*
 includes/config.php
 html/header-demo.php
 js/demo.php
-js/registration-scripts_demo.js
+js/registration-scripts-demo.js
 registration/index-demo.php
+registration/verify-recaptcha.php
