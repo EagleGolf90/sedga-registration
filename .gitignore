@@ -2,12 +2,11 @@ backup/*
 !.gitkeep
 includes/config*.php
 logs/*.log
-node_modules/
-specs/
-instructions/
+node_modules/*
+specs/*
+instructions/*
 includes/config.php
 html/header-demo.php
 js/demo.php
 js/registration-scripts_demo.js
 registration/index-demo.php
-registration/test*
