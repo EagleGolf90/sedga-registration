@@ -1058,6 +1058,14 @@ function buildCartForSubmission() {
 
 // Complete registration function
 function completeRegistration() {
+    const getApiUrl = (endpoint) => {
+        const base = (window.SEDGA_API_BASE || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${endpoint.replace(/^\//, '')}`;
+        }
+        return new URL(endpoint, window.location.href).toString();
+    };
+
     // Get form data
     const formData = {
         firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
@@ -1092,26 +1100,92 @@ function completeRegistration() {
     };
 
     // Send AJAX request to insert-registration.php
-    fetch('../registration/insert-registration.php', {
+    const insertRegistrationUrl = getApiUrl('insert-registration.php');
+    const fallbackInsertUrl = new URL('../registration/insert-registration.php', window.location.href).toString();
+    const scriptElement = document.currentScript || document.querySelector('script[src*="registration-scripts"]');
+    const scriptBaseUrl = (() => {
+        if (!scriptElement || !scriptElement.src) return '';
+        try {
+            const scriptUrl = new URL(scriptElement.src, window.location.href);
+            const basePath = scriptUrl.pathname.replace(/\/js\/[^/]+$/, '');
+            return `${scriptUrl.origin}${basePath}`;
+        } catch (e) {
+            return '';
+        }
+    })();
+
+    const requestOptions = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
-    })
+    };
+
+    const insertUrlCandidates = [
+        insertRegistrationUrl,
+        fallbackInsertUrl,
+        scriptBaseUrl ? `${scriptBaseUrl}/registration/insert-registration.php` : ''
+    ].filter(Boolean);
+
+    const uniqueInsertUrls = [...new Set(insertUrlCandidates)];
+
+    return (async () => {
+        let response = null;
+        for (const url of uniqueInsertUrls) {
+            response = await fetch(url, requestOptions);
+            if (response.status !== 404) {
+                return response;
+            }
+            console.warn('Insert URL not found, retrying with next candidate:', url);
+        }
+        return response;
+    })()
     .then(async response => {
         const contentType = response.headers.get('content-type') || '';
         const responseText = await response.text();
+        const cleanedText = responseText.replace(/^\uFEFF/, '').trim();
 
-        if (!responseText) {
-            throw new Error(`Server returned empty response (${response.status})`);
+        if (!cleanedText) {
+            return {
+                success: false,
+                message: `Empty response from server (${response.status})`,
+                status: response.status
+            };
         }
 
         try {
-            return JSON.parse(responseText);
+            return JSON.parse(cleanedText);
         } catch (parseError) {
+            const firstJsonChar = cleanedText.search(/[\[{]/);
+            if (firstJsonChar >= 0) {
+                const possibleJson = cleanedText.slice(firstJsonChar);
+                try {
+                    return JSON.parse(possibleJson);
+                } catch (innerError) {
+                    const lastJsonChar = Math.max(possibleJson.lastIndexOf('}'), possibleJson.lastIndexOf(']'));
+                    if (lastJsonChar !== -1) {
+                        for (let end = lastJsonChar; end >= 0; end--) {
+                            const ch = possibleJson[end];
+                            if (ch === '}' || ch === ']') {
+                                const candidate = possibleJson.slice(0, end + 1);
+                                try {
+                                    return JSON.parse(candidate);
+                                } catch (candidateError) {
+                                    // keep trying shorter tail
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             console.error('Non-JSON response body:', responseText);
-            throw new Error(`Server returned ${contentType || 'unknown content type'} (${response.status})`);
+            return {
+                success: false,
+                message: `Invalid JSON response from server (${response.status})`,
+                contentType: contentType || 'unknown content type',
+                status: response.status
+            };
         }
     })
     .then(data => {
@@ -2788,6 +2862,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmBtn = document.getElementById('confirmRegistrationBtn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', function() {
+            if (isCompletingRegistration) {
+                return;
+            }
             const button = this;
             const originalHTML = button.innerHTML;
             
@@ -2799,17 +2876,17 @@ document.addEventListener('DOMContentLoaded', function() {
             isCompletingRegistration = true;
             
             // Complete the registration
-            setTimeout(() => {
-                completeRegistration();
-                
-                // Reset button state
-                button.disabled = false;
-                button.innerHTML = originalHTML;
-                
-                // Reset completion flag after a longer delay
-                setTimeout(() => {
+            setTimeout(async () => {
+                try {
+                    await completeRegistration();
+                } finally {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                    
+                    // Reset completion flag
                     isCompletingRegistration = false;
-                }, 2000);
+                }
             }, 800);
         });
     }

@@ -1058,6 +1058,14 @@ function buildCartForSubmission() {
 
 // Complete registration function
 function completeRegistration() {
+    const getApiUrl = (endpoint) => {
+        const base = (window.SEDGA_API_BASE || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${endpoint.replace(/^\//, '')}`;
+        }
+        return new URL(endpoint, window.location.href).toString();
+    };
+
     // Get form data
     const formData = {
         firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
@@ -1092,7 +1100,7 @@ function completeRegistration() {
     };
 
     // Send AJAX request to demo.php
-    fetch('demo.php', {
+    fetch(getApiUrl('../js/demo.php'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -1102,14 +1110,37 @@ function completeRegistration() {
     .then(async response => {
         const contentType = response.headers.get('content-type') || '';
         const responseText = await response.text();
+        const cleanedText = responseText.replace(/^\uFEFF/, '').trim();
 
-        if (!responseText) {
+        if (!cleanedText) {
             throw new Error(`Server returned empty response (${response.status})`);
         }
 
         try {
-            return JSON.parse(responseText);
+            return JSON.parse(cleanedText);
         } catch (parseError) {
+            const firstJsonChar = cleanedText.search(/[\[{]/);
+            if (firstJsonChar >= 0) {
+                const possibleJson = cleanedText.slice(firstJsonChar);
+                try {
+                    return JSON.parse(possibleJson);
+                } catch (innerError) {
+                    const lastJsonChar = Math.max(possibleJson.lastIndexOf('}'), possibleJson.lastIndexOf(']'));
+                    if (lastJsonChar !== -1) {
+                        for (let end = lastJsonChar; end >= 0; end--) {
+                            const ch = possibleJson[end];
+                            if (ch === '}' || ch === ']') {
+                                const candidate = possibleJson.slice(0, end + 1);
+                                try {
+                                    return JSON.parse(candidate);
+                                } catch (candidateError) {
+                                    // keep trying shorter tail
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             console.error('Non-JSON response body:', responseText);
             throw new Error(`Server returned ${contentType || 'unknown content type'} (${response.status})`);
         }
