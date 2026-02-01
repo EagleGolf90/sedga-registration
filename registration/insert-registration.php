@@ -129,7 +129,20 @@ function build_registration_email($data, $registrationId, $secureId, $cartTotal)
 	$cartRows = format_cart_rows(get_value($data, 'cart', []));
 	$totalFormatted = number_format((float)$cartTotal, 2);
 
-	$body = '<h2>SEDGA Registration Summary</h2>';
+	$body = 'Hello Brian,<br/>We, the SEDGA committee, received your registration to participate in 2025 SEDGA tournament being held at Whisper Woods GC in Erie, PA ';
+	$body .= 'during the week after Father\'s day (16 to 18 June). We thank you for registering to playing in this tournament. An invoice of your registration will come ';
+	$body .= 'at a separate email that outlines of what you registered for the tournament. When making payment of $' . $totalFormatted . ' online using either CashApp, Zelle, Venmo, or Apple ';
+	$body .= 'Pay. We strongly encourage you to pay online because it\'s much easier and very convenient for both parties involved.<br/><br/>';
+  $body .= 'If you have any questions or concerns, please don\'t hesitate to email me at sedgasecretary@gmail.com, and/or Eli Pogue, our SEDGA treasurer, at sedgatreasurer22@gmail.com.';
+  $body .= '<br/><br/>We\'re look forward to seeing you at Sea Trail Golf Resort this coming June!<br/><br/>';
+  $body .= 'Thank you<br/><br/>David Cleary<br/>SEDGA Secretary<br/><br/>';
+
+  $body .= '******* PLEASE DO NOT LOSE OR DELETE THIS EMAIL *******<br/>';
+  $body .= 'How to pay entry fee to SEDGA Tournament, click on this link in any browser.<br/>';
+  $body .= 'You will see your payment information and how to pay your entry fee next.<br/>';
+  $body .= '*******************************************************<br/><br/>';
+
+	$body .= '<h2>SEDGA Registration Summary</h2>';
 	$body .= '<p><strong>Registration ID:</strong> ' . html_escape($registrationId) . '<br>';
 	$body .= '<strong>Secure ID:</strong> ' . html_escape($secureId) . '</p>';
 	$body .= '<h3>Registrant</h3>';
@@ -314,8 +327,9 @@ try {
 
 	$registrantEmail = $email;
 	$fromEmail = trim((string)($_ENV['REGISTRATION_FROM_EMAIL'] ?? ''));
-	$notifyEmail = trim((string)($_ENV['REGISTRATION_NOTIFY_EMAIL'] ?? ''));
+	$officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
 	$replyTo = trim((string)($_ENV['REGISTRATION_REPLY_TO'] ?? $registrantEmail));
+	$officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
 	$host = $_SERVER['HTTP_HOST'] ?? 'example.com';
 	if ($fromEmail === '') {
 		$cleanHost = preg_replace('/[^a-z0-9.-]/i', '', $host);
@@ -349,13 +363,13 @@ try {
 			$mailStatus['user']['sent'] = (bool)$sender->send();
 		}
 
-		if (filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+		if (filter_var($officersEmail, FILTER_VALIDATE_EMAIL)) {
 			$mailStatus['admin']['attempted'] = true;
 			$sender = new Email();
 			$sender->setSkipPrint(false);
 			$sender->setName($fromName);
 			$sender->setFromEmailAddress($fromEmail);
-			$sender->setToEmailAddress($notifyEmail);
+			$sender->setToEmailAddress($officersEmail);
 			$sender->setContent($emailBody);
 			$sender->setSubject($subjectAdmin);
 			$sender->setFileAttached('');
@@ -380,10 +394,10 @@ try {
 			);
 		}
 
-		if (filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+		if (filter_var($officersEmail, FILTER_VALIDATE_EMAIL)) {
 			$mailStatus['admin']['attempted'] = true;
 			$mailStatus['admin']['sent'] = @mail(
-				$notifyEmail,
+				$officersEmail,
 				$subjectAdmin,
 				$emailBody,
 				$headerString
