@@ -1066,6 +1066,10 @@ function completeRegistration() {
         return new URL(endpoint, window.location.href).toString();
     };
 
+    const recaptchaToken = (window.grecaptcha && typeof grecaptcha.getResponse === 'function')
+        ? grecaptcha.getResponse()
+        : '';
+
     // Get form data
     const formData = {
         firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
@@ -1096,7 +1100,7 @@ function completeRegistration() {
         receiveUsername: document.getElementById('receiveUsername')?.value || '',
         cart: buildCartForSubmission(),
         cartTotal: cartTotal,
-        recaptchaToken: grecaptcha.getResponse()
+        recaptchaToken: recaptchaToken
     };
 
     // Send AJAX request to demo.php
@@ -1203,7 +1207,11 @@ function completeRegistration() {
     })
     .catch(error => {
         console.error('AJAX error:', error);
-        alert('Error connecting to server: ' + error.message);
+        const isFetchFailure = error && (error.name === 'TypeError' || /failed to fetch/i.test(String(error.message)));
+        const friendlyMessage = isFetchFailure
+            ? 'Unable to reach the registration server. Please check your internet connection or try again in a moment.'
+            : `Error connecting to server: ${error.message || 'Unknown error'}`;
+        alert(friendlyMessage);
     });
 }
 

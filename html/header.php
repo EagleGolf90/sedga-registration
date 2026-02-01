@@ -4,8 +4,6 @@
  * Included at the top of every page
  */
 ?>
-<!-- <!DOCTYPE html> -->
-<!-- <html lang="en"> -->
 <html>
 <head>
     <meta charset="UTF-8">
@@ -18,17 +16,22 @@
     <script>
         // Define reCAPTCHA callback early so it's available when the API loads
         function onRecaptchaChange() {
+            const recaptchaWidget = document.querySelector('.g-recaptcha');
+            const siteKey = recaptchaWidget ? recaptchaWidget.getAttribute('data-sitekey') : '';
+
+            if (!recaptchaWidget || !siteKey) {
+                return;
+            }
+
+            if (!window.grecaptcha || typeof grecaptcha.getResponse !== 'function') {
+                return;
+            }
+
             const recaptchaResponse = grecaptcha.getResponse();
-            const startBtn = document.getElementById('startRegistrationBtn');
-            
-            if (startBtn) {
-                if (recaptchaResponse && recaptchaResponse.length > 0) {
-                    // reCAPTCHA is checked, enable the button
-                    startBtn.disabled = false;
-                } else {
-                    // reCAPTCHA is not checked, disable the button
-                    startBtn.disabled = true;
-                }
+            const recaptchaError = document.getElementById('recaptchaError');
+
+            if (recaptchaError && recaptchaResponse && recaptchaResponse.length > 0) {
+                recaptchaError.style.display = 'none';
             }
         }
     </script>
@@ -36,6 +39,6 @@
         window.SEDGA_API_BASE = <?php echo json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')); ?>;
     </script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script src="../js/registration-scripts.js?v=65432178" defer></script>
+    <script src="../js/registration-scripts.js" defer></script>
  </head>
 <body>

@@ -1,9 +1,6 @@
             <div class="modal-footer border-0 pt-0">
                 <!-- Step 1 Footer (Registration Form) -->
                 <div id="step1Footer" class="w-100 d-flex justify-content-between">
-                    <button type="button" class="btn btn-info" onclick="fillDummyData()">
-                        <i class="fas fa-database me-1"></i>Fill Dummy Data
-                    </button>
                     <div>
                         <button type="button" class="btn btn-secondary" onclick="closeRegistrationWizard()">
                             <i class="fas fa-times me-1"></i>Cancel

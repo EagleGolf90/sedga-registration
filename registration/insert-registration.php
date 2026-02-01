@@ -1,8 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// require_once __DIR__ . '/../includes/config.php';
 require_once '../includes/config.php';
+require_once '../includes/env.php';
 
 function json_response($success, $message, $extra = [], $statusCode = 200) {
 	http_response_code($statusCode);
@@ -27,9 +27,16 @@ if (!is_array($data)) {
 	json_response(false, 'Invalid JSON payload.', [], 400);
 }
 
-$requiredFields = ['firstName', 'lastName', 'email', 'cart', 'recaptchaToken'];
+$secretKey = trim((string)($_ENV['RECAPTCHA_SECRET_KEY'] ?? ''));
+$siteKey = trim((string)($_ENV['RECAPTCHA_SITE_KEY'] ?? ''));
+$recaptchaRequired = $secretKey !== '' && $siteKey !== '';
+
+$requiredFields = ['firstName', 'lastName', 'email', 'cart'];
+if ($recaptchaRequired) {
+	$requiredFields[] = 'recaptchaToken';
+}
 foreach ($requiredFields as $field) {
-	if (!isset($data[$field]) || ($field !== 'cart' && trim((string)$data[$field]) === '')) {
+	if (!isset($data[$field]) || ($field !== 'cart' && $field !== 'recaptchaToken' && trim((string)$data[$field]) === '')) {
 		json_response(false, "Missing required field: {$field}.", [], 400);
 	}
 }
@@ -38,34 +45,38 @@ if (!is_array($data['cart'])) {
 	json_response(false, 'Cart data must be an array.', [], 400);
 }
 
-// Verify reCAPTCHA
-$secretKey = '6LcO9vErAAAAAPoISNkpB5yWsjASlSjai5tGjGyU';
-$recaptchaResponse = $data['recaptchaToken'];
+// Verify reCAPTCHA (only when configured)
+if ($recaptchaRequired) {
+	$recaptchaResponse = (string)($data['recaptchaToken'] ?? '');
+	if ($recaptchaResponse === '') {
+		json_response(false, 'reCAPTCHA verification failed.', ['recaptcha' => ['success' => false, 'error-codes' => ['missing-input-response']]], 400);
+	}
 
-$verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-$verifyParams = http_build_query([
-	'secret' => $secretKey,
-	'response' => $recaptchaResponse,
-	'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
-]);
+	$verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+	$verifyParams = http_build_query([
+		'secret' => $secretKey,
+		'response' => $recaptchaResponse,
+		'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
+	]);
 
-$verifyContext = stream_context_create([
-	'http' => [
-		'method' => 'POST',
-		'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-		'content' => $verifyParams,
-		'timeout' => 10
-	]
-]);
+	$verifyContext = stream_context_create([
+		'http' => [
+			'method' => 'POST',
+			'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+			'content' => $verifyParams,
+			'timeout' => 10
+		]
+	]);
 
-$verifyResponse = file_get_contents($verifyUrl, false, $verifyContext);
-if ($verifyResponse === false) {
-	json_response(false, 'Unable to verify reCAPTCHA.', [], 500);
-}
+	$verifyResponse = file_get_contents($verifyUrl, false, $verifyContext);
+	if ($verifyResponse === false) {
+		json_response(false, 'Unable to verify reCAPTCHA.', [], 500);
+	}
 
-$verifyData = json_decode($verifyResponse, true);
-if (empty($verifyData['success'])) {
-	json_response(false, 'reCAPTCHA verification failed.', ['recaptcha' => $verifyData], 400);
+	$verifyData = json_decode($verifyResponse, true);
+	if (empty($verifyData['success'])) {
+		json_response(false, 'reCAPTCHA verification failed.', ['recaptcha' => $verifyData], 400);
+	}
 }
 
 // Connect to database
@@ -85,16 +96,87 @@ function generate_secure_id() {
 	return strtoupper(bin2hex(random_bytes(16)));
 }
 
+function html_escape($value) {
+	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function format_cart_rows($cart) {
+	if (!is_array($cart) || empty($cart)) {
+		return '<tr><td colspan="3">No items</td></tr>';
+	}
+
+	$rows = [];
+	foreach ($cart as $item) {
+		if (!is_array($item)) {
+			continue;
+		}
+		$name = html_escape(get_value($item, 'name'));
+		$price = number_format((float)get_value($item, 'price', 0), 2);
+		$quantity = (int)get_value($item, 'quantity', 1);
+		if ($quantity < 1) {
+			$quantity = 1;
+		}
+		if ($name === '') {
+			continue;
+		}
+		$rows[] = "<tr><td>{$name}</td><td style=\"text-align:right;\">{$quantity}</td><td style=\"text-align:right;\">\${$price}</td></tr>";
+	}
+
+	return empty($rows) ? '<tr><td colspan="3">No items</td></tr>' : implode('', $rows);
+}
+
+function build_registration_email($data, $registrationId, $secureId, $cartTotal) {
+	$cartRows = format_cart_rows(get_value($data, 'cart', []));
+	$totalFormatted = number_format((float)$cartTotal, 2);
+
+	$body = '<h2>SEDGA Registration Summary</h2>';
+	$body .= '<p><strong>Registration ID:</strong> ' . html_escape($registrationId) . '<br>';
+	$body .= '<strong>Secure ID:</strong> ' . html_escape($secureId) . '</p>';
+	$body .= '<h3>Registrant</h3>';
+	$body .= '<p>'
+		. html_escape(get_value($data, 'firstName')) . ' '
+		. html_escape(get_value($data, 'lastName')) . '<br>'
+		. html_escape(get_value($data, 'email')) . '<br>'
+		. html_escape(get_value($data, 'phone')) . '</p>';
+	$body .= '<h3>Address</h3>';
+	$body .= '<p>'
+		. html_escape(get_value($data, 'address')) . '<br>'
+		. html_escape(get_value($data, 'city')) . ', '
+		. html_escape(get_value($data, 'state')) . ' '
+		. html_escape(get_value($data, 'zipCode')) . '<br>'
+		. html_escape(get_value($data, 'country')) . '</p>';
+	$body .= '<h3>Emergency Contact</h3>';
+	$body .= '<p>'
+		. html_escape(get_value($data, 'emergencyName')) . '<br>'
+		. html_escape(get_value($data, 'emergencyEmail')) . '<br>'
+		. html_escape(get_value($data, 'emergencyPhone')) . '</p>';
+	$body .= '<h3>Cart</h3>';
+	$body .= '<table width="100%" cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;">'
+		. '<thead><tr><th align="left">Item</th><th align="right">Qty</th><th align="right">Price</th></tr></thead>'
+		. '<tbody>' . $cartRows . '</tbody>'
+		. '<tfoot><tr><td colspan="2" align="right"><strong>Total</strong></td><td align="right"><strong>$' . $totalFormatted . '</strong></td></tr></tfoot>'
+		. '</table>';
+
+	return $body;
+}
+
 try {
 	$mysqli->begin_transaction();
 
-	$result = $mysqli->query('SELECT COALESCE(MAX(registration_id), 0) + 1 AS next_id FROM registrations FOR UPDATE');
+	$result = $mysqli->query('SELECT COALESCE(MAX(UniqueID), 0) + 1 AS next_id FROM installation_table where BusinessUnit = \'SEDGA\' and FieldName = \'RegisterID\'');
 	if (!$result) {
 		throw new Exception('Failed to generate registration ID.');
 	}
 	$row = $result->fetch_assoc();
 	$registrationId = (int)$row['next_id'];
 	$result->free();
+
+  // $registrationId = sprintf("%05s", $nextId);
+	$stmt = $mysqli->prepare('UPDATE installation_table SET UniqueID = ? WHERE BusinessUnit = \'SEDGA\' and FieldName = \'RegisterID\'');
+	$stmt->bind_param('i', $registrationId);
+	if (!$stmt->execute()) {
+		throw new Exception('Failed to update registration ID counter.');
+	}
 
 	$secureId = generate_secure_id();
 
@@ -225,9 +307,94 @@ try {
 
 	$mysqli->commit();
 
+	$mailStatus = [
+		'user' => ['attempted' => false, 'sent' => false],
+		'admin' => ['attempted' => false, 'sent' => false]
+	];
+
+	$registrantEmail = $email;
+	$fromEmail = trim((string)($_ENV['REGISTRATION_FROM_EMAIL'] ?? ''));
+	$notifyEmail = trim((string)($_ENV['REGISTRATION_NOTIFY_EMAIL'] ?? ''));
+	$replyTo = trim((string)($_ENV['REGISTRATION_REPLY_TO'] ?? $registrantEmail));
+	$host = $_SERVER['HTTP_HOST'] ?? 'example.com';
+	if ($fromEmail === '') {
+		$cleanHost = preg_replace('/[^a-z0-9.-]/i', '', $host);
+		$fromEmail = 'no-reply@' . ($cleanHost !== '' ? $cleanHost : 'example.com');
+	}
+
+	$emailBody = build_registration_email($data, $registrationId, $secureId, $totalAmount);
+	$subjectUser = "SEDGA Registration Confirmation #{$registrationId}";
+	$subjectAdmin = "New SEDGA Registration #{$registrationId}";
+	$fromName = trim((string)($_ENV['REGISTRATION_FROM_NAME'] ?? ''));
+
+	$emailsPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src-includes' . DIRECTORY_SEPARATOR . 'emails.php';
+	if (is_readable($emailsPath)) {
+		include_once $emailsPath;
+	}
+
+    ini_set("include_path", '/home/mddgaorg/php:' . ini_get("include_path"));
+    include('Mail.php');
+
+	if (class_exists('Email')) {
+		if (filter_var($registrantEmail, FILTER_VALIDATE_EMAIL)) {
+			$mailStatus['user']['attempted'] = true;
+			$sender = new Email();
+			$sender->setSkipPrint(false);
+			$sender->setName($fromName);
+			$sender->setFromEmailAddress($fromEmail);
+			$sender->setToEmailAddress($registrantEmail);
+			$sender->setContent($emailBody);
+			$sender->setSubject($subjectUser);
+			$sender->setFileAttached('');
+			$mailStatus['user']['sent'] = (bool)$sender->send();
+		}
+
+		if (filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+			$mailStatus['admin']['attempted'] = true;
+			$sender = new Email();
+			$sender->setSkipPrint(false);
+			$sender->setName($fromName);
+			$sender->setFromEmailAddress($fromEmail);
+			$sender->setToEmailAddress($notifyEmail);
+			$sender->setContent($emailBody);
+			$sender->setSubject($subjectAdmin);
+			$sender->setFileAttached('');
+			$mailStatus['admin']['sent'] = (bool)$sender->send();
+		}
+	} else {
+		$headers = [
+			'MIME-Version: 1.0',
+			'Content-Type: text/html; charset=UTF-8',
+			'From: ' . $fromEmail,
+			'Reply-To: ' . $replyTo
+		];
+		$headerString = implode("\r\n", $headers);
+
+		if (filter_var($registrantEmail, FILTER_VALIDATE_EMAIL)) {
+			$mailStatus['user']['attempted'] = true;
+			$mailStatus['user']['sent'] = @mail(
+				$registrantEmail,
+				$subjectUser,
+				$emailBody,
+				$headerString
+			);
+		}
+
+		if (filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+			$mailStatus['admin']['attempted'] = true;
+			$mailStatus['admin']['sent'] = @mail(
+				$notifyEmail,
+				$subjectAdmin,
+				$emailBody,
+				$headerString
+			);
+		}
+	}
+
 	json_response(true, 'Registration saved successfully.', [
 		'registration_id' => $registrationId,
-		'secure_id' => $secureId
+		'secure_id' => $secureId,
+		'email' => $mailStatus
 	]);
 } catch (Exception $e) {
 	$mysqli->rollback();

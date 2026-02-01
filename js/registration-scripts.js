@@ -278,12 +278,68 @@ let storedFormData = null;
 let hasFormInput = false;
 
 // reCAPTCHA verification functionality
+function resetRecaptchaWidget() {
+    const recaptchaWidget = document.querySelector('.g-recaptcha');
+    const siteKey = recaptchaWidget ? recaptchaWidget.getAttribute('data-sitekey') : '';
+    const canReset = !!(recaptchaWidget && siteKey && window.grecaptcha && typeof grecaptcha.reset === 'function');
+
+    if (canReset) {
+        try {
+            grecaptcha.reset();
+        } catch (error) {
+            console.warn('Unable to reset reCAPTCHA widget:', error);
+        }
+    }
+}
+
+function openSecurityVerificationSection() {
+    const securityCollapse = document.getElementById('securityVerificationCollapse');
+    if (!securityCollapse) {
+        return;
+    }
+
+    if (!securityCollapse.classList.contains('show')) {
+        try {
+            new bootstrap.Collapse(securityCollapse, { show: true });
+        } catch (error) {
+            console.warn('Unable to open security verification section:', error);
+        }
+    }
+
+    const headingButton = document.querySelector('#securityVerificationHeading button');
+    if (headingButton) {
+        headingButton.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        headingButton.focus();
+    }
+}
+
+function promptRecaptchaRequired(message) {
+    const recaptchaError = document.getElementById('recaptchaError');
+    if (recaptchaError) {
+        recaptchaError.style.display = 'block';
+        setTimeout(() => {
+            recaptchaError.style.display = 'none';
+        }, 5000);
+    }
+
+    if (typeof showErrorMessage === 'function') {
+        showErrorMessage(message);
+    }
+
+    goBackToForm();
+    openSecurityVerificationSection();
+    resetRecaptchaWidget();
+}
+
 function verifyRecaptchaAndOpenModal() {
     lastFocusedElement = document.activeElement;
-    const recaptchaResponse = grecaptcha.getResponse();
+    const recaptchaWidget = document.querySelector('.g-recaptcha');
+    const siteKey = recaptchaWidget ? recaptchaWidget.getAttribute('data-sitekey') : '';
+    const hasRecaptcha = !!(recaptchaWidget && siteKey && window.grecaptcha && typeof grecaptcha.getResponse === 'function');
+    const recaptchaResponse = hasRecaptcha ? grecaptcha.getResponse() : '';
     const errorDiv = document.getElementById('recaptchaError');
-    
-    if (!recaptchaResponse || recaptchaResponse.length === 0) {
+
+    if (hasRecaptcha && (!recaptchaResponse || recaptchaResponse.length === 0)) {
         // reCAPTCHA not completed
         if (errorDiv) {
             errorDiv.style.display = 'block';
@@ -318,15 +374,13 @@ function openRegistrationModal() {
         modal.show();
         
         // Initialize button states when registration page starts
-        // Enable: "Fill Dummy Data", "Cancel", "Next Preview"
+        // Enable: "Cancel", "Next Preview"
         // Disable: "Confirm Registration", "Back to Edit"
-        const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
         const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
         const nextPreviewBtn = document.getElementById('proceedToPreview');
         const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
         const backToEditBtn = document.querySelector('button[onclick="goBackToForm()"]');
         
-        if (fillDummyDataBtn) fillDummyDataBtn.disabled = false;
         if (cancelBtn) cancelBtn.disabled = false;
         if (nextPreviewBtn) nextPreviewBtn.disabled = false;
         if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
@@ -800,21 +854,11 @@ function updateCartDisplay() {
         let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
         if (winnerDiscountItem) {
             const discountAmount = Math.abs(winnerDiscountItem.price).toFixed(2);
-            // cartItemsHtml += `
-            //     <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
-            //         <div class="d-flex justify-content-between align-items-center">
-            //             <div class="flex-grow-1">
-            //                 <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong><br/>
-            //                 <small class="text-muted">${winnerDiscountItem.winnerInfo.rounds} Free Round${winnerDiscountItem.winnerInfo.rounds > 1 ? 's' : ''}</small>
-            //             </div>
-            //             <span class="fw-bold text-success">-$${discountAmount}</span>
-            //         </div>
-            //     </div>`;
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #20c997;">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <strong>${winnerDiscountItem.winnerInfo.division} Champion</strong>
+                            <strong>${winnerDiscountItem.winnerInfo.division} Champion Discount</strong>
                         </div>
                         <span class="fw-bold text-success">-$${discountAmount}</span>
                     </div>
@@ -1066,6 +1110,22 @@ function completeRegistration() {
         return new URL(endpoint, window.location.href).toString();
     };
 
+    const recaptchaWidget = document.querySelector('.g-recaptcha');
+    const siteKey = recaptchaWidget ? recaptchaWidget.getAttribute('data-sitekey') : '';
+    const hasRecaptcha = !!(recaptchaWidget && siteKey && window.grecaptcha && typeof grecaptcha.getResponse === 'function');
+    const recaptchaToken = hasRecaptcha ? grecaptcha.getResponse() : '';
+    const recaptchaError = document.getElementById('recaptchaError');
+
+    if (hasRecaptcha && (!recaptchaToken || recaptchaToken.length === 0)) {
+        const recaptchaMessage = 'Please complete the reCAPTCHA verification to finish registration.';
+        promptRecaptchaRequired(recaptchaMessage);
+        return Promise.resolve({
+            success: false,
+            message: 'reCAPTCHA is incomplete. Please verify and try again.',
+            skipRedirect: true
+        });
+    }
+
     // Get form data
     const formData = {
         firstName: document.getElementById('firstName').value.toLowerCase().replace(/^./, c => c.toUpperCase()),
@@ -1096,12 +1156,12 @@ function completeRegistration() {
         receiveUsername: document.getElementById('receiveUsername')?.value || '',
         cart: buildCartForSubmission(),
         cartTotal: cartTotal,
-        recaptchaToken: grecaptcha.getResponse()
+        recaptchaToken: recaptchaToken
     };
 
     // Send AJAX request to insert-registration.php
     const insertRegistrationUrl = getApiUrl('insert-registration.php');
-    const fallbackInsertUrl = new URL('../registration/insert-registration.php', window.location.href).toString();
+    const fallbackInsertUrl = new URL('../registration_test/insert-registration.php', window.location.href).toString();
     const scriptElement = document.currentScript || document.querySelector('script[src*="registration-scripts"]');
     const scriptBaseUrl = (() => {
         if (!scriptElement || !scriptElement.src) return '';
@@ -1189,6 +1249,9 @@ function completeRegistration() {
         }
     })
     .then(data => {
+        if (!data) {
+            return;
+        }
         if (data.success) {
             console.log('Registration saved successfully:', data);
             
@@ -1232,12 +1295,15 @@ function completeRegistration() {
                 }, 5000);
             }, 500);
         } else {
+            if (data.skipRedirect) {
+                return;
+            }
             console.error('Registration failed:', data.message);
             
             // Check if this is a reCAPTCHA verification error
             if (data.message && data.message.includes('reCAPTCHA')) {
                 // Redirect to error page for reCAPTCHA failures
-                window.location.href = '../registration/error-recaptcha.php';
+                window.location.href = '../registration_test/error-recaptcha.php';
             } else {
                 // Show error for other validation issues
                 alert('Error saving registration: ' + (data.message || 'Unknown error'));
@@ -1246,7 +1312,11 @@ function completeRegistration() {
     })
     .catch(error => {
         console.error('AJAX error:', error);
-        alert('Error connecting to server: ' + error.message);
+        const isFetchFailure = error && (error.name === 'TypeError' || /failed to fetch/i.test(String(error.message)));
+        const friendlyMessage = isFetchFailure
+            ? 'Unable to reach the registration server. Please check your internet connection or try again in a moment.'
+            : `Error connecting to server: ${error.message || 'Unknown error'}`;
+        alert(friendlyMessage);
     });
 }
 
@@ -2576,6 +2646,9 @@ function resetAllModalsAndForm() {
     // Hide error messages
     hideErrorMessage();
     hideFieldErrorsAccordion();
+
+    // Reset reCAPTCHA widget for a fresh registration
+    resetRecaptchaWidget();
     
     // Update cart display
     updateCartDisplay();
@@ -2605,63 +2678,6 @@ function resetAllModalsAndForm() {
     }, 100);
 }
 
-// Fill form with dummy data for testing
-function fillDummyData() {
-    // Personal Information
-    document.getElementById('firstName').value = 'John';
-    document.getElementById('lastName').value = 'Smith';
-    document.getElementById('email').value = 'john.smith@example.com';
-    document.getElementById('phone').value = '555-123-4567';
-    document.getElementById('phoneType').value = '1'; // Mobile
-    document.getElementById('address').value = '123 Main Street';
-    document.getElementById('city').value = 'New York';
-    document.getElementById('state').value = 'NY';
-    document.getElementById('zipCode').value = '10001';
-    document.getElementById('country').value = 'USA';
-    
-    // Golf Information
-    document.getElementById('age').value = '45';
-    document.getElementById('gender').value = '1';
-    document.getElementById('hole18Average').value = '85';
-    document.getElementById('org_id').value = '3'; // Georgia (GDGA)
-    
-    // SEDGA Membership
-    document.getElementById('sedgaOfficer').checked = false;
-    document.getElementById('sedgaHallOfFame').checked = false;
-    
-    // GHIN Information (if visible)
-    const ghinNumber = document.getElementById('ghinNumber');
-    if (ghinNumber) {
-        ghinNumber.value = '123456789';
-    }
-    
-    // Emergency Contact Information
-    document.getElementById('emergencyName').value = 'Jane Smith';
-    document.getElementById('emergencyRelationship').value = '2';
-    document.getElementById('emergencyEmail').value = 'jane.smith@example.com';
-    document.getElementById('emergencyPhoneType').value = '1'; // Mobile
-    document.getElementById('emergencyPhone').value = '555-987-6543';
-    
-    // Payment Information
-    document.getElementById('sendPayment').value = '2'; // Venmo
-    document.getElementById('sendUsername').value = 'johnsmith123';
-    document.getElementById('receivePayment').value = '2'; // Venmo
-    document.getElementById('receiveUsername').value = 'johnsmith123';
-    
-    // Security Verification
-    document.getElementById('terms').checked = true;
-    
-    // Clear any error messages
-    hideErrorMessage();
-    hideFieldErrorsAccordion();
-    
-    // Enable the Confirm Registration button
-    hasFormInput = true;
-    updateConfirmButtonState();
-    
-    console.log('Dummy data filled successfully');
-}
-
 // Wizard navigation functions
 let currentWizardStep = 1;
 
@@ -2685,6 +2701,8 @@ function goToWizardStep(stepNumber) {
         }
         // Enable the confirm button on preview page
         updateConfirmButtonState();
+        // Ensure confirm button handler is bound
+        bindConfirmRegistrationButton();
         // Enable the "Edit Details" button on preview page
         const editDetailsPreviewBtn = document.getElementById('editDetailsPreviewBtn');
         if (editDetailsPreviewBtn) {
@@ -2744,8 +2762,7 @@ function goBackToForm() {
     
     // When "Edit Details" button is selected:
     // Enable: "Cancel" and "Next Preview" buttons
-    // Disable: "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
-    const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+    // Disable: "Confirm Registration", and "Back to Edit" buttons
     const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
     const nextPreviewBtn = document.getElementById('proceedToPreview');
     const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
@@ -2755,10 +2772,11 @@ function goBackToForm() {
     if (cancelBtn) cancelBtn.disabled = false;
     if (nextPreviewBtn) nextPreviewBtn.disabled = false;
     
-    // Disable "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
+    // Disable "Confirm Registration", and "Back to Edit" buttons
     if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
     if (backToEditBtn) backToEditBtn.disabled = true;
-    if (fillDummyDataBtn) fillDummyDataBtn.disabled = true;
+
+    resetRecaptchaWidget();
 }
 
 function proceedToPreview(event) {
@@ -2794,16 +2812,14 @@ function proceedToPreview(event) {
     
     // Manage button states when "Next: Preview" button is selected
     // Enable: "Edit Details", "Confirm Registration", and "Cancel" buttons
-    // Disable: "Next Preview" and "Fill Dummy Data" buttons
-    const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+    // Disable: "Next Preview"  buttons
     const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
     const nextPreviewBtn = document.getElementById('proceedToPreview');
     const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
     const editDetailsBtn = document.getElementById('editDetailsPreviewBtn');
     
-    // Disable "Next Preview" and "Fill Dummy Data" buttons
+    // Disable "Next Preview" buttons
     if (nextPreviewBtn) nextPreviewBtn.disabled = true;
-    if (fillDummyDataBtn) fillDummyDataBtn.disabled = true;
     
     // Enable "Edit Details", "Confirm Registration", and "Cancel" buttons
     if (editDetailsBtn) editDetailsBtn.disabled = false;
@@ -2857,40 +2873,60 @@ document.getElementById('registrationForm').addEventListener('submit', function(
     proceedToPreview(e);
 });
 
-// Handle confirm registration from step 2
-document.addEventListener('DOMContentLoaded', function() {
-    const confirmBtn = document.getElementById('confirmRegistrationBtn');
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', function() {
-            if (isCompletingRegistration) {
-                return;
-            }
-            const button = this;
-            const originalHTML = button.innerHTML;
-            
-            // Show loading state
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
-            
-            // Set completion flag
-            isCompletingRegistration = true;
-            
-            // Complete the registration
-            setTimeout(async () => {
-                try {
-                    await completeRegistration();
-                } finally {
-                    // Reset button state
-                    button.disabled = false;
-                    button.innerHTML = originalHTML;
-                    
-                    // Reset completion flag
-                    isCompletingRegistration = false;
-                }
-            }, 800);
-        });
+function handleConfirmRegistrationClick(button) {
+    if (!button) {
+        return;
     }
-});
+    if (button.disabled) {
+        showErrorMessage('Please complete the preview step before confirming registration.');
+        return;
+    }
+    if (isCompletingRegistration) {
+        return;
+    }
+    const originalHTML = button.innerHTML;
+
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+
+    // Set completion flag
+    isCompletingRegistration = true;
+
+    // Complete the registration
+    setTimeout(async () => {
+        try {
+            await completeRegistration();
+        } finally {
+            // Reset button state
+            button.disabled = false;
+            button.innerHTML = originalHTML;
+
+            // Reset completion flag
+            isCompletingRegistration = false;
+        }
+    }, 800);
+}
+
+function bindConfirmRegistrationButton() {
+    const confirmBtn = document.getElementById('confirmRegistrationBtn');
+    if (!confirmBtn || confirmBtn.dataset.bound === 'true') {
+        return;
+    }
+    confirmBtn.dataset.bound = 'true';
+    confirmBtn.addEventListener('click', function() {
+        handleConfirmRegistrationClick(this);
+    });
+}
+
+// Handle confirm registration from step 2
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        bindConfirmRegistrationButton();
+    });
+} else {
+    bindConfirmRegistrationButton();
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     const registrationModalElement = document.getElementById('registrationModal');

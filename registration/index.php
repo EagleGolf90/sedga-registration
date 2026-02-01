@@ -4,6 +4,8 @@
  * This is the primary file that includes all components
  */
 
+require_once '../includes/env.php';
+
 // Include header (meta tags, stylesheets, scripts)
 include '../html/header.php';
 

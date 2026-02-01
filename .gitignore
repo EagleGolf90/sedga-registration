@@ -11,4 +11,6 @@ js/demo.php
 js/registration-scripts_demo.js
 registration/index-demo.php
 registration/verify-recaptcha.php
-registration/insert-registration.php
+testing/*
+.env
+includes/env.php

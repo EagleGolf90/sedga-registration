@@ -1,7 +1,9 @@
 <?php
+require_once '../includes/env.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $secretKey = "6LcO9vErAAAAAPoISNkpB5yWsjASlSjai5tGjGyU";
-    $recaptchaResponse = $_POST['g-recaptcha-response'];
+    $secretKey = $_ENV['RECAPTCHA_SECRET_KEY'] ?? '';
+    $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
 
     // Verify with Google
     $verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
