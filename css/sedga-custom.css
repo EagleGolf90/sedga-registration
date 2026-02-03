@@ -1,0 +1,19 @@
+.sedga_logo_mini { width: 100px; height: 100px; float: right; }
+.kdga_logo_mini { width: 250px; height: 200px; }
+.kdga_logo_mini2 { width: 150px; height: 100px; }
+.course_logo_mini { width: 200px; height: 200px; }
+.title-col { font-weight: bold; background-color: lightgray; padding: 5px; }
+.invoice-col { border-bottom: 1px solid #eee; }
+.shiftRight { text-align: right; }
+.page-header { border-bottom: none; }
+.card-body, .card-header, .titleHeader, .footer, .ctr { text-align: center; }
+.handicap { width: 75px; }
+.participate { width: 100px; }
+.red-color { color: red; font-weight: bold; }
+#totals { background-color: gray; }
+.send_mailing_label { border: 1px; color: blue; }
+.receive_mailing_label { border: 1px; color: fuchsia; }
+.back_button { width: 100px; }
+.preview_button { width: 100px; }
+.disabled { background-color: lightgray; }
+.field_in { background-color: burlywood; }

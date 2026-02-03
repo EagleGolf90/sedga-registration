@@ -264,6 +264,49 @@ function updatePricesInDOM() {
 let cart = [];
 let cartTotal = 0;
 
+function getServiceInfo(serviceId, fallbackName, fallbackPrice) {
+    const optionalService = pricesData?.optionalServices?.find(service => service.id === serviceId);
+    if (optionalService) {
+        return { name: optionalService.name, price: optionalService.price };
+    }
+
+    const eventCategory = pricesData?.eventCategories?.find(category => category.id === serviceId);
+    if (eventCategory) {
+        return { name: eventCategory.name, price: eventCategory.price };
+    }
+
+    return { name: fallbackName, price: fallbackPrice };
+}
+
+function ensureHallOfFameAwardsLuncheon() {
+    const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
+    const banquetIndex = cart.findIndex(item => item.service === 'banquet');
+
+    if (isHallOfFame) {
+        if (banquetIndex === -1) {
+            const banquetInfo = getServiceInfo('banquet', 'Awards & Luncheon', 25.00);
+            cart.push({
+                service: 'banquet',
+                title: banquetInfo.name,
+                price: banquetInfo.price,
+                quantity: 1,
+                peopleCount: 1,
+                isHallOfFameItem: true
+            });
+        }
+        return;
+    }
+
+    if (banquetIndex !== -1 && cart[banquetIndex].isHallOfFameItem) {
+        cart.splice(banquetIndex, 1);
+    }
+}
+
+// Hall of Fame discount breakdown
+const HALL_OF_FAME_LUNCH_DISCOUNT = 25.00;
+const HALL_OF_FAME_MEMBERS_DUE_DISCOUNT = 20.00;
+const HALL_OF_FAME_TOTAL_DISCOUNT = HALL_OF_FAME_LUNCH_DISCOUNT + HALL_OF_FAME_MEMBERS_DUE_DISCOUNT;
+
 // Modal state tracking
 let isCompletingRegistration = false;
 let isEditingDetails = false;
@@ -750,11 +793,13 @@ function updateCartDisplay() {
     const cartContainer = document.getElementById('cartItemsContainer');
     const cartCount = document.getElementById('cartCount');
     const cartSummary = document.querySelector('.cart-summary');
+
+    ensureHallOfFameAwardsLuncheon();
     
     // Update cart count - count actual items (not discounts)
     const totalItems = cart.reduce((sum, item) => {
         // Skip discount-only items
-        if (item.isWinnerDiscount || item.isSedgaOfficerItem || item.isMatchedNameDiscount) {
+        if (item.isWinnerDiscount || item.isMatchedNameDiscount) {
             return sum;
         }
         // For banquet, count people; for others count quantity
@@ -826,14 +871,20 @@ function updateCartDisplay() {
             return cartItemHtml;
         }).join('');
         
-        // Add Hall of Fame Member Fee discount if applicable
+        // Add Hall of Fame discounts if applicable
         const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
         if (isHallOfFame && cart.length > 0) {
             cartItemsHtml += `
                 <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #28a745;">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-truncate me-2"><strong>Hall of Fame Discount</strong></span>
-                        <span class="fw-bold text-success">-$45.00</span>
+                        <span class="text-truncate me-2"><strong>Awards & Lunch Discount</strong></span>
+                        <span class="fw-bold text-success">-$${HALL_OF_FAME_LUNCH_DISCOUNT.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #28a745;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-truncate me-2"><strong>Members Due</strong></span>
+                        <span class="fw-bold text-success">-$${HALL_OF_FAME_MEMBERS_DUE_DISCOUNT.toFixed(2)}</span>
                     </div>
                 </div>`;
         }
@@ -841,13 +892,19 @@ function updateCartDisplay() {
         // Add SEDGA Officer discount if applicable (only if Hall of Fame is NOT selected)
         const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
         if (isSedgaOfficer && !isHallOfFame && cart.length > 0) {
-            cartItemsHtml += `
-                <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #007bff;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-truncate me-2"><strong>SEDGA Officer Discount</strong></span>
-                        <span class="fw-bold text-info">-$25.00</span>
-                    </div>
-                </div>`;
+            const banquetItem = cart.find(item => item.service === 'banquet');
+            const officerLunchCount = banquetItem ? (banquetItem.peopleCount || banquetItem.quantity || 0) : 0;
+            const officerDiscountCount = Math.min(2, officerLunchCount);
+            const officerDiscountTotal = (officerDiscountCount * 25).toFixed(2);
+            if (officerDiscountCount > 0) {
+                cartItemsHtml += `
+                    <div class="cart-item mb-2 bg-light rounded p-2" style="border-left: 4px solid #007bff;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-truncate me-2"><strong>SEDGA Officer Discount</strong><br/><small class="text-muted">${officerDiscountCount} ${officerDiscountCount === 1 ? 'person' : 'people'}</small></span>
+                            <span class="fw-bold text-info">-$${officerDiscountTotal}</span>
+                        </div>
+                    </div>`;
+            }
         }
         
         // Add winner discount if applicable (auto-added to cart as a special item)
@@ -956,7 +1013,7 @@ function updateCartDisplay() {
         // Add up all non-discount items (regular services and tournament categories)
         cart.forEach(item => {
             // Skip discount items in initial calculation
-            if (item.isWinnerDiscount || item.isSedgaOfficerItem || item.isMatchedNameDiscount || item.isHallOfFameItem) {
+            if (item.isWinnerDiscount || item.isMatchedNameDiscount) {
                 return;
             }
             
@@ -981,16 +1038,21 @@ function updateCartDisplay() {
             total += (matchedNameDiscountItem.price); // This is negative, so it subtracts
         }
         
-        // Apply Hall of Fame discount ($45 off) - includes free lunch and free membership
+        // Apply Hall of Fame discounts (Awards & Lunch + Members Due)
         if (isHallOfFame && total > 0) {
-            total -= 45;
+            total -= HALL_OF_FAME_TOTAL_DISCOUNT;
             total = Math.max(0, total); // Ensure total doesn't go below zero
         }
         
-        // Apply SEDGA Officer discount ($25 off for free lunch) - only if Hall of Fame is NOT selected
+        // Apply SEDGA Officer discount ($25 off per person, up to 2) - only if Hall of Fame is NOT selected
         if (isSedgaOfficer && !isHallOfFame && total > 0) {
-            total -= 25;
-            total = Math.max(0, total); // Ensure total doesn't go below zero
+            const banquetItem = cart.find(item => item.service === 'banquet');
+            const officerLunchCount = banquetItem ? (banquetItem.peopleCount || banquetItem.quantity || 0) : 0;
+            const officerDiscountTotal = Math.min(2, officerLunchCount) * 25;
+            if (officerDiscountTotal > 0) {
+                total -= officerDiscountTotal;
+                total = Math.max(0, total); // Ensure total doesn't go below zero
+            }
         }
         
         // Ensure total is never negative and is properly formatted
@@ -1057,6 +1119,7 @@ function updateCartDisplay() {
 
 // Build cart data with proper structure and include all discounts for submission
 function buildCartForSubmission() {
+    ensureHallOfFameAwardsLuncheon();
     const cartItems = [];
     
     // Add all cart items with proper field names (name instead of title, service -> type)
@@ -1073,13 +1136,20 @@ function buildCartForSubmission() {
         });
     });
     
-    // Add Hall of Fame discount as a separate line item if applicable
+    // Add Hall of Fame discounts as separate line items if applicable
     const isHallOfFame = document.getElementById('sedgaHallOfFame')?.checked;
     if (isHallOfFame && cart.length > 0) {
         cartItems.push({
-            name: 'Hall of Fame Discount',
-            type: 'hall-of-fame-discount',
-            price: -45.00,
+            name: 'Awards & Lunch Discount',
+            type: 'hall-of-fame-awards-lunch-discount',
+            price: -HALL_OF_FAME_LUNCH_DISCOUNT,
+            quantity: 1,
+            isDiscount: true
+        });
+        cartItems.push({
+            name: 'Members Due',
+            type: 'hall-of-fame-members-due',
+            price: -HALL_OF_FAME_MEMBERS_DUE_DISCOUNT,
             quantity: 1,
             isDiscount: true
         });
@@ -1088,13 +1158,18 @@ function buildCartForSubmission() {
     // Add SEDGA Officer discount if applicable (only if Hall of Fame is NOT selected)
     const isSedgaOfficer = document.getElementById('sedgaOfficer')?.checked;
     if (isSedgaOfficer && !isHallOfFame && cart.length > 0) {
-        cartItems.push({
-            name: 'SEDGA Officer Discount',
-            type: 'sedga-officer-discount',
-            price: -25.00,
-            quantity: 1,
-            isDiscount: true
-        });
+        const banquetItem = cart.find(item => item.service === 'banquet');
+        const officerLunchCount = banquetItem ? (banquetItem.peopleCount || banquetItem.quantity || 0) : 0;
+        const officerDiscountCount = Math.min(2, officerLunchCount);
+        if (officerDiscountCount > 0) {
+            cartItems.push({
+                name: 'SEDGA Officer Discount',
+                type: 'sedga-officer-discount',
+                price: -25.00,
+                quantity: officerDiscountCount,
+                isDiscount: true
+            });
+        }
     }
     
     return cartItems;
@@ -1749,23 +1824,34 @@ function generateConfirmationHTML(data) {
                                         if (isHallOfFame) {
                                             discountsHTML += `
                                                 <tr style="border-top: 1px solid #28a745;">
-                                                    <td><strong style="color: #28a745;">Hall of Fame Discount</strong></td>
+                                                    <td><strong style="color: #28a745;">Awards & Lunch Discount</strong></td>
                                                     <td>1</td>
-                                                    <td>-$45.00</td>
-                                                    <td style="color: #28a745;"><strong>-$45.00</strong></td>
+                                                    <td>-$${HALL_OF_FAME_LUNCH_DISCOUNT.toFixed(2)}</td>
+                                                    <td style="color: #28a745;"><strong>-$${HALL_OF_FAME_LUNCH_DISCOUNT.toFixed(2)}</strong></td>
                                                 </tr>
-                                                <tr><td><small class="text-muted">Free Lunch, Free Membership</small></td></tr>
+                                                <tr>
+                                                    <td><strong style="color: #28a745;">Members Due</strong></td>
+                                                    <td>1</td>
+                                                    <td>-$${HALL_OF_FAME_MEMBERS_DUE_DISCOUNT.toFixed(2)}</td>
+                                                    <td style="color: #28a745;"><strong>-$${HALL_OF_FAME_MEMBERS_DUE_DISCOUNT.toFixed(2)}</strong></td>
+                                                </tr>
                                             `;
                                         } else if (isSedgaOfficer) {
-                                            discountsHTML += `
-                                                <tr style="border-top: 1px solid #007bff;">
-                                                    <td><strong style="color: #007bff;">SEDGA Officer Discount</strong></td>
-                                                    <td>1</td>
-                                                    <td>-$25.00</td>
-                                                    <td style="color: #007bff;"><strong>-$25.00</strong></td>
-                                                </tr>
-                                                <tr><td><small class="text-muted">Free Lunch</small></td></tr>
-                                            `;
+                                            const banquetItem = cart.find(item => item.service === 'banquet');
+                                            const officerLunchCount = banquetItem ? (banquetItem.peopleCount || banquetItem.quantity || 0) : 0;
+                                            const officerDiscountCount = Math.min(2, officerLunchCount);
+                                            const officerDiscountTotal = (officerDiscountCount * 25).toFixed(2);
+                                            if (officerDiscountCount > 0) {
+                                                discountsHTML += `
+                                                    <tr style="border-top: 1px solid #007bff;">
+                                                        <td><strong style="color: #007bff;">SEDGA Officer Discount</strong></td>
+                                                        <td>${officerDiscountCount}</td>
+                                                        <td>-$25.00</td>
+                                                        <td style="color: #007bff;"><strong>-$${officerDiscountTotal}</strong></td>
+                                                    </tr>
+                                                    <tr><td><small class="text-muted">Free Lunch (${officerDiscountCount} ${officerDiscountCount === 1 ? 'person' : 'people'})</small></td></tr>
+                                                `;
+                                            }
                                         }
                                         
                                         // Get winner discount from cart items
@@ -2780,6 +2866,7 @@ function goBackToForm() {
 }
 
 function proceedToPreview(event) {
+    updateCartDisplay();
     // This will be called after form validation passes
     // Collect all form data
     const formData = collectFormData();
