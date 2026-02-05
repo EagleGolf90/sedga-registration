@@ -14,9 +14,15 @@
       "category": "main"
     },
     {
-      "id": "super-seniors",
-      "name": "Super Seniors",
+      "id": "super-seniors-three-day",
+      "name": "Super Seniors (Three-Day)",
       "price": 315.00,
+      "category": "main"
+    },
+    {
+      "id": "super-seniors-two-day",
+      "name": "Super Seniors (Two-Day)",
+      "price": 240.00,
       "category": "main"
     },
     {

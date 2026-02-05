@@ -7,7 +7,6 @@
           <th>Totals</th>
         </tr>
 <?php $total_states = 0;
-      $number_of_states = 0;
       $old_country = '';
       foreach ($byState as $state_row) {
         if ($old_country != $state_row['Country'])
@@ -23,11 +22,9 @@
         </tr>
 <?php
         $total_states += $state_row['TotalStates'];
-        $number_of_states += 1;
         $old_country = $state_row['Country'];
       }
 ?>
-        <tr><td class="ctr" style="font-weight:bold"># of States</td><td class="ctr" style="font-weight:bold"><?php echo $number_of_states; ?></td></tr>
         <tr><td class="ctr" style="font-weight:bold">State Totals</td><td class="ctr" style="font-weight:bold"><?php echo $total_states; ?></td></tr>
         </table>
       </div>

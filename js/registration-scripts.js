@@ -15,12 +15,10 @@ async function loadPricesData() {
             console.error('Failed to load prices data:', response.statusText);
             return false;
         }
+    } catch (error) {
         pricesData = await response.json();
         updatePricesInDOM();
         return true;
-    } catch (error) {
-        console.error('Error loading prices data:', error);
-        return false;
     }
 }
 
@@ -43,20 +41,22 @@ async function loadWinnersData() {
 
 // Map tournament category IDs to division names
 function mapCategoryToDivision(categoryId) {
+    const normalizedCategoryId = normalizeTournamentCategoryId(categoryId);
     const categoryDivisionMap = {
         'open': 'Open',
         'seniors': 'Seniors',
-        'super-seniors': 'Super Seniors',
+        'super-seniors-three-day': 'Super Seniors (Three-Day)',
+        'super-seniors-two-day': 'Super Seniors (Two-Day)',
         'women': 'Women'
     };
-    return categoryDivisionMap[categoryId] || null;
+    return categoryDivisionMap[normalizedCategoryId] || null;
 }
 
 // Get the selected tournament category (division) from cart
 function getSelectedDivision() {
-    const selectedCategory = cart.find(item => tournamentCategories.includes(item.service));
-    if (selectedCategory) {
-        return mapCategoryToDivision(selectedCategory.service);
+    const selectedCategoryId = getTournamentCategoryFromCart();
+    if (selectedCategoryId) {
+        return mapCategoryToDivision(selectedCategoryId);
     }
     return null;
 }
@@ -687,24 +687,204 @@ function detectSuspiciousActivity() {
 }
 
 // Define tournament categories that are mutually exclusive
-const tournamentCategories = ['open', 'seniors', 'super-seniors', 'women'];
+const tournamentCategories = ['open', 'seniors', 'super-seniors-three-day', 'super-seniors-two-day', 'women'];
+const tournamentCategoryAliases = {
+    'super-seniors-2-day': 'super-seniors-two-day',
+    'super-seniors-2day': 'super-seniors-two-day',
+    'super-seniors-3-day': 'super-seniors-three-day',
+    'super-seniors-3day': 'super-seniors-three-day'
+};
+
+function normalizeServiceId(serviceId) {
+    if (!serviceId) {
+        return serviceId;
+    }
+    return String(serviceId)
+        .trim()
+        .toLowerCase()
+        .replace(/[–—]/g, '-')
+        .replace(/[_\s]+/g, '-')
+        .replace(/-+/g, '-');
+}
+
+function normalizeCategoryDisplayName(name) {
+    if (!name) {
+        return name;
+    }
+    return normalizeServiceId(name)
+        .replace(/[()]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function normalizeTournamentCategoryId(serviceId) {
+    const normalizedId = normalizeServiceId(serviceId);
+    if (!normalizedId) {
+        return normalizedId;
+    }
+    return tournamentCategoryAliases[normalizedId] || normalizedId;
+}
+
+function isTournamentCategory(serviceId) {
+    const normalizedId = normalizeTournamentCategoryId(serviceId);
+    if (!normalizedId) {
+        return false;
+    }
+    return tournamentCategories.includes(normalizedId);
+}
+
+function resolveTournamentCategoryIdFromItem(item) {
+    if (!item) {
+        return null;
+    }
+
+    const directCandidates = [item.service, item.type, item.id];
+    for (const candidate of directCandidates) {
+        if (isTournamentCategory(candidate)) {
+            return normalizeTournamentCategoryId(candidate);
+        }
+    }
+
+    const nameCandidates = [item.title, item.name, item.service];
+    for (const name of nameCandidates) {
+        if (!name) {
+            continue;
+        }
+        const normalizedName = normalizeCategoryDisplayName(name);
+        if (tournamentCategories.includes(normalizedName)) {
+            return normalizedName;
+        }
+        const matchedCategory = pricesData?.eventCategories?.find(category =>
+            normalizeCategoryDisplayName(category.name) === normalizedName
+        );
+        if (matchedCategory) {
+            return normalizeTournamentCategoryId(matchedCategory.id);
+        }
+    }
+
+    return null;
+}
+
+function getTournamentCategoryFromCart() {
+    for (const item of cart) {
+        const resolvedId = resolveTournamentCategoryIdFromItem(item);
+        if (resolvedId) {
+            if (!isTournamentCategory(item.service)) {
+                item.service = resolvedId;
+            }
+            return resolvedId;
+        }
+    }
+    return null;
+}
+
+function getTournamentCategoryDomIds(normalizedId) {
+    const ids = [normalizedId];
+    Object.keys(tournamentCategoryAliases).forEach(alias => {
+        if (tournamentCategoryAliases[alias] === normalizedId) {
+            ids.push(alias);
+        }
+    });
+    return Array.from(new Set(ids));
+}
+
+function getSelectedTournamentCategoryFromDom() {
+    for (const category of tournamentCategories) {
+        const domIds = getTournamentCategoryDomIds(category);
+        for (const domId of domIds) {
+            const serviceItem = document.querySelector(`[data-service="${domId}"]`);
+            if (!serviceItem) {
+                continue;
+            }
+            const button = serviceItem.querySelector('.add-to-cart');
+            if (button && button.classList.contains('btn-success')) {
+                return {
+                    domId,
+                    normalizedId: category,
+                    serviceItem
+                };
+            }
+        }
+    }
+    return null;
+}
+
+function ensureTournamentCategoryInCart() {
+    const existingCategoryId = getTournamentCategoryFromCart();
+    if (existingCategoryId) {
+        return true;
+    }
+
+    const selectedFromDom = getSelectedTournamentCategoryFromDom();
+    if (!selectedFromDom) {
+        return false;
+    }
+
+    const normalizedServiceName = normalizeTournamentCategoryId(selectedFromDom.domId);
+    const servicePrice = parseFloat(selectedFromDom.serviceItem.dataset.price || '0') || 0;
+    const serviceTitle = selectedFromDom.serviceItem.querySelector('.service-title')?.textContent || normalizedServiceName;
+
+    cart.push({
+        service: normalizedServiceName,
+        title: serviceTitle,
+        price: servicePrice,
+        quantity: 1
+    });
+
+    return true;
+}
+
+function resetTournamentCategoryButtons() {
+    const domIds = new Set();
+    tournamentCategories.forEach(category => {
+        getTournamentCategoryDomIds(category).forEach(domId => domIds.add(domId));
+    });
+
+    domIds.forEach(categoryId => {
+        const categoryButton = document.querySelector(`[data-service="${categoryId}"] .add-to-cart`);
+        if (categoryButton) {
+            categoryButton.innerHTML = '<i class="fas fa-plus"></i>';
+            categoryButton.classList.remove('btn-success');
+            categoryButton.classList.add('btn-outline-success');
+        }
+    });
+}
+
+function findServiceButton(serviceId) {
+    if (!serviceId) {
+        return null;
+    }
+
+    const normalizedId = normalizeTournamentCategoryId(serviceId);
+    const idsToCheck = isTournamentCategory(serviceId) ? getTournamentCategoryDomIds(normalizedId) : [serviceId];
+
+    for (const id of idsToCheck) {
+        const button = document.querySelector(`[data-service="${id}"] .add-to-cart`);
+        if (button) {
+            return button;
+        }
+    }
+
+    return null;
+}
 
 // Add to cart functionality
 document.querySelectorAll('.add-to-cart').forEach(button => {
     button.addEventListener('click', function() {
         const serviceItem = this.closest('.service-item');
         const serviceName = serviceItem.dataset.service;
+        const normalizedServiceName = normalizeTournamentCategoryId(serviceName);
         const servicePrice = parseFloat(serviceItem.dataset.price);
         const serviceTitle = serviceItem.querySelector('.service-title').textContent;
         
         // Check if this is a tournament category
-        if (tournamentCategories.includes(serviceName)) {
+        if (isTournamentCategory(serviceName)) {
             // Check if there's a winner discount in the cart from a different division
             let winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
             if (winnerDiscountItem) {
                 // Get the division of the winner discount
                 const winnerDivision = winnerDiscountItem.winnerInfo.division;
-                const selectedDivision = mapCategoryToDivision(serviceName);
+                const selectedDivision = mapCategoryToDivision(normalizedServiceName);
                 
                 // If the divisions don't match, prevent the change
                 if (winnerDivision !== selectedDivision) {
@@ -717,21 +897,14 @@ document.querySelectorAll('.add-to-cart').forEach(button => {
             
             // If no winner discount conflict, proceed with division change
             // Remove any existing tournament category from cart (but keep winner discount if it matches)
-            cart = cart.filter(item => !tournamentCategories.includes(item.service));
-            
+            cart = cart.filter(item => !isTournamentCategory(item.service));
+
             // Reset all tournament category buttons
-            tournamentCategories.forEach(category => {
-                const categoryButton = document.querySelector(`[data-service="${category}"] .add-to-cart`);
-                if (categoryButton) {
-                    categoryButton.innerHTML = '<i class="fas fa-plus"></i>';
-                    categoryButton.classList.remove('btn-success');
-                    categoryButton.classList.add('btn-outline-success');
-                }
-            });
+            resetTournamentCategoryButtons();
             
             // Add the new tournament category
             cart.push({
-                service: serviceName,
+                service: normalizedServiceName,
                 title: serviceTitle,
                 price: servicePrice,
                 quantity: 1
@@ -943,13 +1116,13 @@ function updateCartDisplay() {
                 const serviceName = this.dataset.service;
                 
                 // Check if the removed item is a tournament category (division)
-                const isTournamentCategory = tournamentCategories.includes(serviceName);
+                const isCategory = isTournamentCategory(serviceName);
                 
                 // Remove the item from cart
                 cart = cart.filter(item => item.service !== serviceName);
                 
                 // If a division was removed and there's still a winner discount, remove it too
-                if (isTournamentCategory) {
+                if (isCategory) {
                     const winnerDiscountItem = cart.find(item => item.isWinnerDiscount);
                     if (winnerDiscountItem) {
                         cart = cart.filter(item => !item.isWinnerDiscount);
@@ -958,7 +1131,7 @@ function updateCartDisplay() {
                 }
                 
                 // Reset button state for removed item
-                const serviceButton = document.querySelector(`[data-service="${serviceName}"] .add-to-cart`);
+                const serviceButton = findServiceButton(serviceName);
                 if (serviceButton) {
                     serviceButton.innerHTML = '<i class="fas fa-plus"></i>';
                     serviceButton.classList.remove('btn-success');
@@ -1634,7 +1807,7 @@ function restoreCartState(cartData, total) {
         console.log('Restored cart item:', item.service);
         
         // Update corresponding button state
-        const serviceButton = document.querySelector(`[data-service="${item.service}"] .add-to-cart`);
+        const serviceButton = findServiceButton(item.service);
         if (serviceButton) {
             serviceButton.classList.remove('btn-outline-success');
             serviceButton.classList.add('btn-success');
@@ -2119,8 +2292,8 @@ function validateRegistrationForm() {
         });
     }
     
-    // Check tournament category selection
-    const hasTournamentCategory = cart.some(item => tournamentCategories.includes(item.service));
+    // Check tournament category selection (sync from DOM if needed)
+    const hasTournamentCategory = ensureTournamentCategoryInCart();
     if (!hasTournamentCategory) {
         fieldErrors.push({
             fieldId: 'cart',

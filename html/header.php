@@ -39,6 +39,6 @@
         window.SEDGA_API_BASE = <?php echo json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')); ?>;
     </script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script src="../js/registration-scripts.js" defer></script>
+    <script src="../js/registration-scripts.js?v=1" defer></script>
  </head>
 <body>

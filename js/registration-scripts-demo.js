@@ -46,7 +46,8 @@ function mapCategoryToDivision(categoryId) {
     const categoryDivisionMap = {
         'open': 'Open',
         'seniors': 'Seniors',
-        'super-seniors': 'Super Seniors',
+        'super-seniors-three-day': 'Super Seniors (Three-Day)',
+        'super-seniors-two-day': 'Super Seniors (Two-Day)',
         'women': 'Women'
     };
     return categoryDivisionMap[categoryId] || null;
@@ -595,7 +596,7 @@ function detectSuspiciousActivity() {
 }
 
 // Define tournament categories that are mutually exclusive
-const tournamentCategories = ['open', 'seniors', 'super-seniors', 'women'];
+const tournamentCategories = ['open', 'seniors', 'super-seniors-three-day', 'super-seniors-two-day', 'women'];
 
 // Add to cart functionality
 document.querySelectorAll('.add-to-cart').forEach(button => {
