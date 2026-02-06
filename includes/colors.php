@@ -4,6 +4,7 @@ function getSeparatorColor($event) {
   if ($event == 2) return "bg-danger text-white";
   if ($event == 3) return "bg-success text-white";
   if ($event == 4) return "bg-info text-white";
+  if ($event == 5) return "bg-warning";
   return "";
 }
 

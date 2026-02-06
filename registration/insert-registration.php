@@ -334,7 +334,13 @@ try {
 	$registrantEmail = $email;
 	$fromEmail = trim((string)($_ENV['REGISTRATION_FROM_EMAIL'] ?? ''));
 	$replyTo = trim((string)($_ENV['REGISTRATION_REPLY_TO'] ?? $registrantEmail));
-	$officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
+
+	if (IT_FLAG == true) {
+		$officersEmail = 'kdgaman@hotmail.com';
+	} else {
+	  $officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
+	}
+
 	$officerEmails = [];
 	if ($officersEmail !== '') {
 		$parts = preg_split('/[\s,;]+/', $officersEmail);
