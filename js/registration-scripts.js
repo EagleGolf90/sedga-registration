@@ -968,6 +968,18 @@ function updateCartDisplay() {
     const cartSummary = document.querySelector('.cart-summary');
 
     ensureHallOfFameAwardsLuncheon();
+
+    // Keep banquet counts consistent for pricing and submission
+    cart.forEach(item => {
+        if (item.service !== 'banquet') {
+            return;
+        }
+
+        const rawCount = item.peopleCount ?? item.quantity ?? 1;
+        const normalizedCount = Math.max(1, Math.min(10, parseInt(rawCount, 10) || 1));
+        item.peopleCount = normalizedCount;
+        item.quantity = normalizedCount;
+    });
     
     // Update cart count - count actual items (not discounts)
     const totalItems = cart.reduce((sum, item) => {

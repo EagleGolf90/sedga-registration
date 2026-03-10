@@ -326,13 +326,12 @@ function openRegistrationModal() {
         // Initialize button states when registration page starts
         // Enable: "Fill Dummy Data", "Cancel", "Next Preview"
         // Disable: "Confirm Registration", "Back to Edit"
-        const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+        
         const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
         const nextPreviewBtn = document.getElementById('proceedToPreview');
         const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
         const backToEditBtn = document.querySelector('button[onclick="goBackToForm()"]');
         
-        if (fillDummyDataBtn) fillDummyDataBtn.disabled = false;
         if (cancelBtn) cancelBtn.disabled = false;
         if (nextPreviewBtn) nextPreviewBtn.disabled = false;
         if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
@@ -2616,63 +2615,6 @@ function resetAllModalsAndForm() {
     }, 100);
 }
 
-// Fill form with dummy data for testing
-function fillDummyData() {
-    // Personal Information
-    document.getElementById('firstName').value = 'John';
-    document.getElementById('lastName').value = 'Smith';
-    document.getElementById('email').value = 'john.smith@example.com';
-    document.getElementById('phone').value = '555-123-4567';
-    document.getElementById('phoneType').value = '1'; // Mobile
-    document.getElementById('address').value = '123 Main Street';
-    document.getElementById('city').value = 'New York';
-    document.getElementById('state').value = 'NY';
-    document.getElementById('zipCode').value = '10001';
-    document.getElementById('country').value = 'USA';
-    
-    // Golf Information
-    document.getElementById('age').value = '45';
-    document.getElementById('gender').value = '1';
-    document.getElementById('hole18Average').value = '85';
-    document.getElementById('org_id').value = '3'; // Georgia (GDGA)
-    
-    // SEDGA Membership
-    document.getElementById('sedgaOfficer').checked = false;
-    document.getElementById('sedgaHallOfFame').checked = false;
-    
-    // GHIN Information (if visible)
-    const ghinNumber = document.getElementById('ghinNumber');
-    if (ghinNumber) {
-        ghinNumber.value = '123456789';
-    }
-    
-    // Emergency Contact Information
-    document.getElementById('emergencyName').value = 'Jane Smith';
-    document.getElementById('emergencyRelationship').value = '2';
-    document.getElementById('emergencyEmail').value = 'jane.smith@example.com';
-    document.getElementById('emergencyPhoneType').value = '1'; // Mobile
-    document.getElementById('emergencyPhone').value = '555-987-6543';
-    
-    // Payment Information
-    document.getElementById('sendPayment').value = '2'; // Venmo
-    document.getElementById('sendUsername').value = 'johnsmith123';
-    document.getElementById('receivePayment').value = '2'; // Venmo
-    document.getElementById('receiveUsername').value = 'johnsmith123';
-    
-    // Security Verification
-    document.getElementById('terms').checked = true;
-    
-    // Clear any error messages
-    hideErrorMessage();
-    hideFieldErrorsAccordion();
-    
-    // Enable the Confirm Registration button
-    hasFormInput = true;
-    updateConfirmButtonState();
-    
-    console.log('Dummy data filled successfully');
-}
-
 // Wizard navigation functions
 let currentWizardStep = 1;
 
@@ -2755,8 +2697,7 @@ function goBackToForm() {
     
     // When "Edit Details" button is selected:
     // Enable: "Cancel" and "Next Preview" buttons
-    // Disable: "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
-    const fillDummyDataBtn = document.querySelector('button[onclick="fillDummyData()"]');
+    // Disable: "Confirm Registration", and "Back to Edit" buttons
     const cancelBtn = document.querySelector('button[onclick="closeRegistrationWizard()"]');
     const nextPreviewBtn = document.getElementById('proceedToPreview');
     const confirmRegistrationBtn = document.getElementById('confirmRegistrationBtn');
@@ -2766,10 +2707,9 @@ function goBackToForm() {
     if (cancelBtn) cancelBtn.disabled = false;
     if (nextPreviewBtn) nextPreviewBtn.disabled = false;
     
-    // Disable "Confirm Registration", "Back to Edit", and "Fill Dummy Data" buttons
+    // Disable "Confirm Registration", and "Back to Edit" buttons
     if (confirmRegistrationBtn) confirmRegistrationBtn.disabled = true;
     if (backToEditBtn) backToEditBtn.disabled = true;
-    if (fillDummyDataBtn) fillDummyDataBtn.disabled = true;
 }
 
 function proceedToPreview(event) {

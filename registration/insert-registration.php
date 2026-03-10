@@ -100,6 +100,23 @@ function html_escape($value) {
 	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+function check_payment_type($paymentType)
+{
+	switch (strtolower($paymentType)) {
+		case 'cashapp':
+			return 'to CashApp $njdga90';
+		case 'zelle':
+			return 'to Zelle njdga90@gmail.com';
+		case 'venmo':
+			return 'to Venmo @NJDGA';
+		case 'applepay':
+		case 'apple cash':
+			return 'to Apple Cash 609-385-8416';
+		default:
+			return '';
+	}
+}
+
 function format_cart_rows($cart) {
 	if (!is_array($cart) || empty($cart)) {
 		return '<tr><td colspan="3">No items</td></tr>';
@@ -140,6 +157,10 @@ function build_registration_email($data, $registrationId, $secureId, $cartTotal)
 
   $body .= '******* PLEASE DO NOT LOSE OR DELETE THIS EMAIL *******<br/><br/>';
   $body .= 'How to pay entry fee to SEDGA Tournament:<br/>';
+	$body .= 'How to pay to SEDGA Treasurer (Payment format):<br/>';
+	$body .= 'Pay amount $' . $totalFormatted . ' to the order of SEDGA Treasurer. ';
+	$body .= 'Send ' . check_payment_type(get_value($data, 'sendPayment')) . '<br/>';
+
   $body .= 'You will see your payment information and how to pay your entry fee next.<br/><br/>';
   $body .= '*******************************************************<br/><br/>';
 
