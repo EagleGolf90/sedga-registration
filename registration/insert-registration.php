@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+define('SEND_FLAG', true); // Set to true to enable email sending (for testing, set to false to disable)
+
 require_once '../includes/config.php';
 require_once '../includes/env.php';
 
@@ -103,18 +105,29 @@ function html_escape($value) {
 function check_payment_type($paymentType)
 {
 	switch (strtolower($paymentType)) {
-		case 'cashapp':
+		case '1':
 			return 'to CashApp $njdga90';
-		case 'zelle':
+		case '3':
 			return 'to Zelle njdga90@gmail.com';
-		case 'venmo':
+		case '2':
 			return 'to Venmo @NJDGA';
-		case 'applepay':
-		case 'apple cash':
-			return 'to Apple Cash 609-385-8416';
+		case '5':
+			return 'to Apple Cash 6093858416';
 		default:
-			return '';
+			return 'to DGA, PO BOX 250, Estell Manor, NJ 08319';
 	}
+}
+
+function send_payment_info(): string {
+	$temp = '<br/><b>Cashapp</b> - $njdga90,<br/>';
+	$temp .= '<b>Zelle</b> – njdga90@gmail.com<br/>';
+	$temp .= '<b>Zelle</b> – 6093858416<br/>';
+	$temp .= '<b>Venmo</b> - @njdga<br/>';
+	$temp .= '<b>Apple Cash</b> – 6093858416<br/>';
+	$temp .= '<b>Check</b> – make your check payable to SEDGA and mail it to DGA, PO BOX 250, Estell Manor, NJ 08319<br/><br/>';
+	$temp .= 'Questions with your entry fee payment, email sedgatreasurer22@gmail.com.<br/><br/>';
+
+	return $temp;
 }
 
 function format_cart_rows($cart) {
@@ -158,8 +171,8 @@ function build_registration_email($data, $registrationId, $secureId, $cartTotal)
   $body .= '******* PLEASE DO NOT LOSE OR DELETE THIS EMAIL *******<br/><br/>';
   $body .= 'How to pay entry fee to SEDGA Tournament:<br/>';
 	$body .= 'How to pay to SEDGA Treasurer (Payment format):<br/>';
-	$body .= 'Pay amount $' . $totalFormatted . ' to the order of SEDGA Treasurer. ';
-	$body .= 'Send ' . check_payment_type(get_value($data, 'sendPayment')) . '<br/>';
+	$body .= 'Pay amount $' . $totalFormatted . ' to the order of SEDGA Treasurer using one of the payment options below:<br/><br/>';
+	$body .= send_payment_info();
 
   $body .= 'You will see your payment information and how to pay your entry fee next.<br/><br/>';
   $body .= '*******************************************************<br/><br/>';
@@ -356,7 +369,7 @@ try {
 	$fromEmail = trim((string)($_ENV['REGISTRATION_FROM_EMAIL'] ?? ''));
 	$replyTo = trim((string)($_ENV['REGISTRATION_REPLY_TO'] ?? $registrantEmail));
 
-	if (IT_FLAG == true) {
+	if (SEND_FLAG == true) {
 		$officersEmail = 'kdgaman@hotmail.com';
 	} else {
 	  $officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
