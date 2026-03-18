@@ -226,12 +226,15 @@
         applyEditModeUi();
     }
 
-    async function handleLookup() {
-        const input = document.getElementById('editRegistrationId');
-        const registrationId = parseInt(input?.value || 0, 10);
+    async function handleLookup(registrationIdOverride) {
+        let registrationId = parseInt(registrationIdOverride || 0, 10);
+        if (!registrationId) {
+            const input = document.getElementById('editRegistrationId');
+            registrationId = parseInt(input?.value || 0, 10);
+        }
 
         if (!registrationId) {
-            setStatus('Please enter a valid registration ID.', 'error');
+            setStatus('Please select a valid registration.', 'error');
             return;
         }
 
@@ -357,7 +360,7 @@
     function bindLookupHandlers() {
         const button = document.getElementById('loadRegistrationBtn');
         if (button) {
-            button.addEventListener('click', handleLookup);
+            button.addEventListener('click', () => handleLookup());
         }
 
         const input = document.getElementById('editRegistrationId');
@@ -369,6 +372,24 @@
                 }
             });
         }
+
+        document.querySelectorAll('.edit-registration-btn').forEach(buttonEl => {
+            buttonEl.addEventListener('click', () => {
+                const registrationId = parseInt(buttonEl.dataset.registrationId || 0, 10);
+                handleLookup(registrationId);
+            });
+        });
+    }
+
+    function bindSuccessModalRefresh() {
+        const successModalElement = document.getElementById('successModal');
+        if (!successModalElement) {
+            return;
+        }
+
+        successModalElement.addEventListener('hidden.bs.modal', () => {
+            window.location.reload();
+        }, { once: true });
     }
 
     if (document.readyState === 'loading') {
@@ -376,10 +397,12 @@
             bindLookupHandlers();
             overrideRegistrationSubmit();
             applyEditModeUi();
+            bindSuccessModalRefresh();
         });
     } else {
         bindLookupHandlers();
         overrideRegistrationSubmit();
         applyEditModeUi();
+        bindSuccessModalRefresh();
     }
 })();

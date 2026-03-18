@@ -4,9 +4,14 @@
  * Allows officers to load and update existing registrations.
  */
 
+require_once '../includes/config.php';
 require_once '../includes/env.php';
 
+include '../includes/edit_registration.php';
+
 include '../html/header.php';
+
+include('../menus/return_menu.php');
 ?>
 
 <div class="container py-4">
@@ -17,18 +22,57 @@ include '../html/header.php';
             </h5>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-3">Enter a registration ID to load an existing registration for editing.</p>
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label for="editRegistrationId" class="form-label">Registration ID</label>
-                    <input type="text" class="form-control" id="editRegistrationId" placeholder="e.g. 10245">
+            <p class="text-muted mb-3">Select a registration to load and edit.</p>
+
+            <?php if (!empty($errors)) { ?>
+                <div class="alert alert-danger">
+                    <?php echo html_escape(implode(' ', $errors)); ?>
                 </div>
-                <div class="col-md-4">
-                    <button type="button" class="btn btn-success" id="loadRegistrationBtn">
-                        <i class="fas fa-search me-1"></i>Load Registration
-                    </button>
-                </div>
+            <?php } ?>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Registration ID</th>
+                            <th>Name</th>
+                            <th class="text-center">State</th>
+                            <th class="text-center" style="width:120px;">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($registrations)) { ?>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No registrations found.</td>
+                            </tr>
+                        <?php } else { ?>
+                            <?php foreach ($registrations as $row) {
+                                $registrationId = (int)($row['registration_id'] ?? 0);
+                                $firstName = (string)($row['first_name'] ?? '');
+                                $lastName = (string)($row['last_name'] ?? '');
+                                $state = (string)($row['state'] ?? '');
+                                $fullName = trim($firstName . ' ' . $lastName);
+                            ?>
+                                <tr>
+                                    <td><?php echo html_escape($registrationId); ?></td>
+                                    <td><?php echo html_escape($fullName); ?></td>
+                                    <td class="text-center"><?php echo html_escape($state); ?></td>
+                                    <td class="text-center">
+                                        <?php if ($registrationId > 0) { ?>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-success edit-registration-btn"
+                                                    data-registration-id="<?php echo html_escape($registrationId); ?>">
+                                                <i class="fas fa-pen me-1"></i>Edit
+                                            </button>
+                                        <?php } ?>
+                                    </td>
+                                </tr>
+                            <?php } ?>
+                        <?php } ?>
+                    </tbody>
+                </table>
             </div>
+
             <div id="editLookupStatus" class="mt-3"></div>
         </div>
     </div>

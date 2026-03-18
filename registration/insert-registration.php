@@ -1,8 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-define('SEND_FLAG', true); // Set to true to enable email sending (for testing, set to false to disable)
-
 require_once '../includes/config.php';
 require_once '../includes/env.php';
 
@@ -369,11 +367,7 @@ try {
 	$fromEmail = trim((string)($_ENV['REGISTRATION_FROM_EMAIL'] ?? ''));
 	$replyTo = trim((string)($_ENV['REGISTRATION_REPLY_TO'] ?? $registrantEmail));
 
-	if (SEND_FLAG == true) {
-		$officersEmail = 'kdgaman@hotmail.com';
-	} else {
-	  $officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
-	}
+  $officersEmail = trim((string)($_ENV['REGISTRATION_OFFICERS_EMAIL'] ?? ''));
 
 	$officerEmails = [];
 	if ($officersEmail !== '') {

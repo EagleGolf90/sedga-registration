@@ -7,6 +7,8 @@ let pricesData = {
 // Winners data object
 let winnersData = [];
 
+// Cached copy of the original state dropdown options
+let stateOptionsCache = null;
 // Load prices from JSON file
 async function loadPricesData() {
     try {
