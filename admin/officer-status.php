@@ -1,7 +1,7 @@
 <?php
 /**
  * Officer Registration Status Listing
- * Allows bulk status updates for P/R.
+ * Allows bulk status updates for P/R/W.
  */
 
 require_once '../includes/config.php';
@@ -24,6 +24,9 @@ function status_label($status) {
     }
     if ($normalized === 'R') {
         return 'Registered';
+    }
+    if ($normalized === 'W') {
+        return 'Withdraw';
     }
     return $normalized;
 }
@@ -65,7 +68,7 @@ if ($mysqli->connect_error) {
     $mysqli->set_charset('utf8mb4');
 }
 
-$allowedUpdateStatuses = ['P', 'R'];
+$allowedUpdateStatuses = ['P', 'R', 'W'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     $updateStatus = normalize_status($_POST['bulk_status'] ?? '');
@@ -238,6 +241,7 @@ include '../html/header.php';
                 <a class="btn btn-outline-secondary<?php echo $statusFilter === 'ALL' ? ' active' : ''; ?>" href="?status=ALL">All statuses</a>
                 <a class="btn btn-outline-secondary<?php echo $statusFilter === 'P' ? ' active' : ''; ?>" href="?status=P">Pending (P)</a>
                 <a class="btn btn-outline-secondary<?php echo $statusFilter === 'R' ? ' active' : ''; ?>" href="?status=R">Registered (R)</a>
+                <a class="btn btn-outline-secondary<?php echo $statusFilter === 'W' ? ' active' : ''; ?>" href="?status=W">Withdraw (W)</a>
                 <form class="d-flex align-items-center" method="get" action="">
                     <label for="statusFilter" class="me-2">Filter:</label>
                     <select id="statusFilter" name="status" class="form-select form-select-sm" style="width:auto;">
@@ -257,6 +261,7 @@ include '../html/header.php';
                         <option value="">Bulk status...</option>
                         <option value="P">Pending (P)</option>
                         <option value="R">Registered (R)</option>
+                        <option value="W">Withdraw (W)</option>
                     </select>
                     <button type="submit" class="btn btn-sm btn-success">Apply to Selected</button>
                     <span class="text-muted">Selected: <span id="selectedCount">0</span></span>
@@ -288,7 +293,7 @@ include '../html/header.php';
                                     $status = normalize_status($row['registration_status'] ?? '');
                                     $state = (string)($row['state'] ?? '');
                                     $division = $divisionMap[$registrationId] ?? '';
-                                    $statusClass = $status === 'P' ? 'text-danger' : ($status === 'R' ? 'text-primary' : 'text-muted');
+                                    $statusClass = $status === 'P' ? 'text-danger' : ($status === 'R' ? 'text-primary' : ($status === 'W' ? 'text-success' : 'text-muted'));
                                 ?>
                                     <tr>
                                         <td class="text-center">

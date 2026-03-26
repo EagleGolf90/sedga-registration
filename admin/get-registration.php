@@ -47,7 +47,8 @@ try {
                 emergency_phone_type, emergency_phone, send_payment, send_username, receive_payment,
                 receive_username, total_amount
          FROM registrations
-         WHERE registration_id = ?'
+         WHERE registration_id = ?
+         ORDER BY last_name ASC, first_name ASC'
     );
 
     if (!$stmt) {

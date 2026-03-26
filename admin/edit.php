@@ -37,13 +37,14 @@ include('../menus/return_menu.php');
                             <th>Registration ID</th>
                             <th>Name</th>
                             <th class="text-center">State</th>
+                            <th class="text-center">Status</th>
                             <th class="text-center" style="width:120px;">Edit</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($registrations)) { ?>
                             <tr>
-                                <td colspan="4" class="text-center text-muted">No registrations found.</td>
+                                <td colspan="5" class="text-center text-muted">No registrations found.</td>
                             </tr>
                         <?php } else { ?>
                             <?php foreach ($registrations as $row) {
@@ -51,12 +52,14 @@ include('../menus/return_menu.php');
                                 $firstName = (string)($row['first_name'] ?? '');
                                 $lastName = (string)($row['last_name'] ?? '');
                                 $state = (string)($row['state'] ?? '');
+                                $statusLabel = status_label($row['registration_status'] ?? '');
                                 $fullName = trim($firstName . ' ' . $lastName);
                             ?>
                                 <tr>
                                     <td><?php echo html_escape($registrationId); ?></td>
                                     <td><?php echo html_escape($fullName); ?></td>
                                     <td class="text-center"><?php echo html_escape($state); ?></td>
+                                    <td class="text-center"><?php echo html_escape($statusLabel); ?></td>
                                     <td class="text-center">
                                         <?php if ($registrationId > 0) { ?>
                                             <button type="button"
