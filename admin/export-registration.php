@@ -210,17 +210,17 @@ if ($shouldDownload && empty($errors)) {
                 'Last Updated',
                 'Open',
                 'Seniors',
+                'Super Seniors 3-Day',
+                'Super Seniors 2-Day',
+                'Women',
                 'Awards Luncheon',
                 'Skins Tuesday',
                 'Skins Wednesday',
                 'Skins Thursday',
-                'Super Seniors 3-Day',
-                'Super Seniors 2-Day',
                 'Handicap',
                 'SEDGA Officer',
                 'Awards Discount',
-                'Members Due',
-                'Women'
+                'Members Due'
             ]);
 
             while ($row = $result->fetch_assoc()) {
@@ -258,17 +258,17 @@ if ($shouldDownload && empty($errors)) {
                     $row['last_updated'] ?? '',
                     $row['Open'] ?? '',
                     $row['Seniors'] ?? '',
+                    $row['Super_Seniors_3'] ?? '',
+                    $row['Super_Seniors_2'] ?? '',
+                    $row['Women'] ?? '',
                     $row['Awards_Luncheon'] ?? '',
                     $row['Skins_Tuesday'] ?? '',
                     $row['Skins_Wednesday'] ?? '',
                     $row['Skins_Thursday'] ?? '', 
-                    $row['Super_Seniors_3'] ?? '',
-                    $row['Super_Seniors_2'] ?? '',
                     $row['Handicap'] ?? '',
                     $row['SEDGA_Officer'] ?? 0,
                     $row['Awards_Discount'] ?? '',
-                    $row['Members_due'] ?? '',
-                    $row['Women'] ?? ''
+                    $row['Members_due'] ?? ''
                 ]);
             }
 
